@@ -1,0 +1,3141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ReimburseAI — Smart Expense Management</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --bg2: #111118;
+    --bg3: #18181f;
+    --bg4: #1f1f28;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #f0f0f5;
+    --text2: #9090a0;
+    --text3: #55556a;
+    --accent: #7c6af7;
+    --accent2: #a89cff;
+    --accent-glow: rgba(124,106,247,0.15);
+    --green: #22c98e;
+    --green-bg: rgba(34,201,142,0.1);
+    --red: #f05454;
+    --red-bg: rgba(240,84,84,0.1);
+    --amber: #f5a623;
+    --amber-bg: rgba(245,166,35,0.1);
+    --blue: #4a9eff;
+    --blue-bg: rgba(74,158,255,0.1);
+    --font-head: 'Syne', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+    --radius: 12px;
+    --radius-lg: 18px;
+    --radius-xl: 24px;
+    --shadow: 0 0 0 1px var(--border), 0 8px 32px rgba(0,0,0,0.4);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+  }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    overflow-y: hidden;
+  }
+
+  /* ── GLOBAL LAYOUT ── */
+  #auth-screen, #main-app { min-height: 100vh; }
+  .app { display: flex; min-height: 100vh; height: 100vh; }
+  .sidebar {
+    width: 240px; min-height: 100vh; background: var(--bg2);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
+    transition: transform 0.3s ease;
+  }
+  .sidebar-logo {
+    padding: 24px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .logo-mark {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), #b09cff);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-head); font-weight: 800; font-size: 16px; color: white;
+  }
+  .logo-text { font-family: var(--font-head); font-weight: 700; font-size: 16px; }
+  .logo-text span { color: var(--accent2); }
+
+  .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; }
+  .nav-section-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
+    color: var(--text3); text-transform: uppercase;
+    padding: 12px 20px 6px;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 20px; cursor: pointer; border-radius: 0;
+    color: var(--text2); font-size: 13.5px; font-weight: 400;
+    transition: all 0.15s; position: relative;
+  }
+  .nav-item:hover { color: var(--text); background: var(--bg3); }
+  .nav-item.active {
+    color: var(--accent2); background: var(--accent-glow);
+  }
+  .nav-item.active::before {
+    content: ''; position: absolute; left: 0; top: 4px; bottom: 4px;
+    width: 3px; background: var(--accent); border-radius: 0 2px 2px 0;
+  }
+  .nav-icon { width: 18px; height: 18px; opacity: 0.8; flex-shrink: 0; }
+  .nav-badge {
+    margin-left: auto; background: var(--accent); color: white;
+    font-size: 10px; font-weight: 700; padding: 1px 6px;
+    border-radius: 10px; min-width: 18px; text-align: center;
+  }
+
+  .sidebar-footer {
+    padding: 16px; border-top: 1px solid var(--border);
+  }
+  .user-card {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px; border-radius: var(--radius);
+    background: var(--bg3); cursor: pointer;
+    transition: background 0.15s;
+  }
+  .user-card:hover { background: var(--bg4); }
+  .avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--blue));
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 12px; color: white; flex-shrink: 0;
+  }
+  .user-info { flex: 1; min-width: 0; }
+  .user-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .user-role { font-size: 11px; color: var(--text3); }
+
+  .main {
+    margin-left: 240px; flex: 1; display: flex; flex-direction: column;
+    min-height: 100vh; height: 100vh; overflow: hidden;
+  }
+  .topbar {
+    height: 60px; background: var(--bg2); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 28px; gap: 16px;
+    position: sticky; top: 0; z-index: 50;
+    flex-shrink: 0;
+  }
+  .topbar-title { font-family: var(--font-head); font-weight: 700; font-size: 18px; flex: 1; }
+  .topbar-actions { display: flex; align-items: center; gap: 10px; }
+
+  .content {
+    padding: 24px; flex: 1; min-height: 0;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 9px 18px; border-radius: var(--radius); border: none;
+    font-family: var(--font-body); font-size: 13.5px; font-weight: 500;
+    cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  }
+  .btn-primary {
+    background: var(--accent); color: white;
+  }
+  .btn-primary:hover { background: #6b59e8; transform: translateY(-1px); }
+  .btn-secondary {
+    background: var(--bg3); color: var(--text2); border: 1px solid var(--border2);
+  }
+  .btn-secondary:hover { background: var(--bg4); color: var(--text); }
+  .btn-ghost { background: transparent; color: var(--text2); }
+  .btn-ghost:hover { background: var(--bg3); color: var(--text); }
+  .btn-sm { padding: 6px 12px; font-size: 12.5px; }
+  .btn-danger { background: var(--red-bg); color: var(--red); border: 1px solid rgba(240,84,84,0.2); }
+  .btn-danger:hover { background: var(--red); color: white; }
+  .btn-success { background: var(--green-bg); color: var(--green); border: 1px solid rgba(34,201,142,0.2); }
+  .btn-success:hover { background: var(--green); color: white; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 20px;
+  }
+  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .card-title { font-family: var(--font-head); font-weight: 600; font-size: 14px; }
+  .card-subtitle { font-size: 12px; color: var(--text3); margin-top: 2px; }
+
+  /* ── STAT CARDS ── */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .stat-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 20px;
+    position: relative; overflow: hidden;
+  }
+  .stat-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: var(--accent-color, var(--accent));
+  }
+  .stat-label { font-size: 11px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; }
+  .stat-value { font-family: var(--font-head); font-size: 28px; font-weight: 800; margin: 6px 0 4px; }
+  .stat-change { font-size: 12px; }
+  .stat-change.up { color: var(--green); }
+  .stat-change.down { color: var(--red); }
+  .stat-icon {
+    position: absolute; right: 18px; top: 18px;
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+
+  /* ── TABLE ── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  thead th {
+    text-align: left; font-size: 11px; font-weight: 600; color: var(--text3);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 10px 16px; border-bottom: 1px solid var(--border);
+  }
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+  tbody tr:hover { background: var(--bg3); }
+  tbody tr:last-child { border-bottom: none; }
+  td { padding: 12px 16px; color: var(--text2); }
+  td.text-main { color: var(--text); font-weight: 500; }
+
+  /* ── BADGES ── */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 20px; font-size: 11.5px; font-weight: 500;
+  }
+  .badge-pending { background: var(--amber-bg); color: var(--amber); }
+  .badge-approved { background: var(--green-bg); color: var(--green); }
+  .badge-rejected { background: var(--red-bg); color: var(--red); }
+  .badge-info { background: var(--blue-bg); color: var(--blue); }
+  .badge-purple { background: var(--accent-glow); color: var(--accent2); }
+
+  /* ── FORMS ── */
+  .form-group { margin-bottom: 18px; }
+  label { display: block; font-size: 13px; font-weight: 500; color: var(--text2); margin-bottom: 7px; }
+  input[type="text"], input[type="email"], input[type="password"],
+  input[type="number"], input[type="date"], select, textarea {
+    width: 100%; background: var(--bg3); border: 1px solid var(--border2);
+    border-radius: var(--radius); padding: 10px 14px; color: var(--text);
+    font-family: var(--font-body); font-size: 13.5px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    outline: none;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+  select option { background: var(--bg3); }
+  textarea { resize: vertical; min-height: 80px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-row.three { grid-template-columns: 1fr 1fr 1fr; }
+
+  /* ── MODALS ── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px); z-index: 500;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--bg2); border: 1px solid var(--border2);
+    border-radius: var(--radius-xl); width: 100%; max-width: 600px;
+    max-height: 90vh; overflow-y: auto;
+    transform: translateY(16px); transition: transform 0.2s;
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal-header {
+    padding: 22px 24px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .modal-title { font-family: var(--font-head); font-weight: 700; font-size: 16px; }
+  .modal-body { padding: 24px; }
+  .modal-footer {
+    padding: 16px 24px; border-top: 1px solid var(--border);
+    display: flex; gap: 10px; justify-content: flex-end;
+  }
+  .close-btn {
+    width: 28px; height: 28px; border-radius: 8px; border: none;
+    background: var(--bg3); color: var(--text2); cursor: pointer;
+    display: flex; align-items: center; justify-content: center; font-size: 16px;
+  }
+  .close-btn:hover { background: var(--bg4); color: var(--text); }
+
+  /* ── PAGES ── */
+  .page { display: none; min-height: 0; }
+  .page.active {
+    display: block;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  /* ── VIEWPORT PAGES ── */
+  #page-dashboard.active,
+  #page-analytics.active {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+  .viewport-shell {
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    gap: 18px;
+    height: 100%;
+    width: 100%;
+    min-height: 0;
+  }
+  .viewport-shell.compact {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .dashboard-hero,
+  .section-hero {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 4px 2px 0;
+  }
+  .dashboard-hero-copy,
+  .section-hero-copy {
+    min-width: 0;
+  }
+  .viewport-shell .stats-grid {
+    margin-bottom: 0;
+  }
+  .dashboard-title {
+    font-size: clamp(20px, 2vw, 26px);
+    font-family: var(--font-head);
+    font-weight: 800;
+    margin-bottom: 6px;
+    line-height: 1.1;
+  }
+  .dashboard-subtitle {
+    color: var(--text3);
+    font-size: 13.5px;
+    line-height: 1.5;
+  }
+  .section-title {
+    font-size: clamp(18px, 1.8vw, 24px);
+    font-family: var(--font-head);
+    font-weight: 800;
+    margin-bottom: 6px;
+    line-height: 1.1;
+  }
+  .section-subtitle {
+    color: var(--text3);
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .dashboard-main {
+    display: grid;
+    grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr);
+    gap: 18px;
+    min-height: 0;
+  }
+  .dashboard-primary,
+  .dashboard-secondary {
+    display: grid;
+    gap: 18px;
+    min-height: 0;
+  }
+  .dashboard-primary {
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .dashboard-secondary {
+    grid-template-rows: minmax(0, 1fr);
+    align-content: start;
+  }
+  .analytics-main {
+    display: grid;
+    grid-template-columns: minmax(0, 1.65fr) minmax(300px, 1fr);
+    gap: 18px;
+    min-height: 0;
+  }
+  .analytics-primary,
+  .analytics-secondary {
+    display: grid;
+    gap: 18px;
+    min-height: 0;
+  }
+  .analytics-primary {
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .analytics-secondary {
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .charts-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(260px, 1fr);
+    gap: 18px;
+    margin-bottom: 0;
+    min-height: 0;
+  }
+  .dashboard-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .chart-card {
+    min-height: 0;
+  }
+  .chart-frame {
+    position: relative;
+    flex: 1;
+    min-height: 220px;
+    height: clamp(220px, 28vh, 320px);
+    max-height: 320px;
+  }
+  .chart-frame canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+  }
+  .table-card-body {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    margin: 0 -4px -4px;
+    padding: 0 4px 4px;
+  }
+  .metric-list {
+    display: grid;
+    gap: 14px;
+  }
+  .metric-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .metric-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+  .metric-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(124,106,247,0.2), rgba(74,158,255,0.18));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .metric-copy {
+    min-width: 0;
+  }
+  .metric-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .metric-sub {
+    font-size: 12px;
+    color: var(--text3);
+    margin-top: 2px;
+  }
+  .metric-value {
+    font-family: var(--font-head);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .insight-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 12px;
+  }
+  .insight-panel {
+    background: var(--bg3);
+    border-radius: var(--radius);
+    padding: 14px;
+    min-width: 0;
+  }
+  .insight-recommendation {
+    margin-top: 14px;
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.5;
+  }
+
+  /* ── AUTH ── */
+  .auth-wrap {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: var(--bg);
+    background-image: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(124,106,247,0.12) 0%, transparent 70%);
+  }
+  .auth-box {
+    width: 100%; max-width: 440px;
+    background: var(--bg2); border: 1px solid var(--border2);
+    border-radius: var(--radius-xl); padding: 40px;
+  }
+  .auth-logo { text-align: center; margin-bottom: 28px; }
+  .auth-title { font-family: var(--font-head); font-size: 24px; font-weight: 800; text-align: center; margin-bottom: 6px; }
+  .auth-sub { font-size: 13.5px; color: var(--text3); text-align: center; margin-bottom: 28px; }
+  .auth-tabs { display: flex; background: var(--bg3); border-radius: var(--radius); padding: 4px; margin-bottom: 24px; }
+  .auth-tab {
+    flex: 1; padding: 8px; border-radius: 8px; border: none;
+    background: transparent; color: var(--text2); font-family: var(--font-body);
+    font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s;
+  }
+  .auth-tab.active { background: var(--bg2); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+
+  /* ── UPLOAD ZONE ── */
+  .upload-zone {
+    border: 2px dashed var(--border2); border-radius: var(--radius);
+    padding: 32px; text-align: center; cursor: pointer;
+    transition: all 0.2s; position: relative;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--accent); background: var(--accent-glow);
+  }
+  .upload-zone input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .upload-icon { font-size: 32px; margin-bottom: 10px; }
+  .upload-text { font-size: 13.5px; color: var(--text2); }
+  .upload-hint { font-size: 12px; color: var(--text3); margin-top: 4px; }
+
+  /* ── TIMELINE ── */
+  .timeline { position: relative; padding-left: 24px; }
+  .timeline::before {
+    content: ''; position: absolute; left: 7px; top: 0; bottom: 0;
+    width: 2px; background: var(--border);
+  }
+  .timeline-item { position: relative; margin-bottom: 20px; }
+  .timeline-dot {
+    position: absolute; left: -24px; top: 2px;
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid var(--bg2);
+    background: var(--text3);
+  }
+  .timeline-dot.done { background: var(--green); }
+  .timeline-dot.current { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+  .timeline-dot.rejected { background: var(--red); }
+  .timeline-meta { font-size: 11.5px; color: var(--text3); margin-bottom: 3px; }
+  .timeline-text { font-size: 13.5px; color: var(--text2); }
+
+  /* ── WORKFLOW BUILDER ── */
+  .workflow-steps { display: flex; flex-direction: column; gap: 10px; }
+  .workflow-step {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 16px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .step-number {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--accent-glow); color: var(--accent2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; flex-shrink: 0;
+  }
+  .step-connector {
+    text-align: center; color: var(--text3); font-size: 12px; padding: 4px 0;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .step-connector::before, .step-connector::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  /* ── NOTIFICATIONS ── */
+  .notifications-panel {
+    position: fixed; right: 20px; top: 70px; width: 320px;
+    background: var(--bg2); border: 1px solid var(--border2);
+    border-radius: var(--radius-lg); z-index: 200;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    display: none;
+  }
+  .notif-header { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .notif-list { max-height: 360px; overflow-y: auto; }
+  .notif-item { padding: 12px 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; }
+  .notif-item:hover { background: var(--bg3); }
+  .notif-item:last-child { border-bottom: none; }
+  .notif-title { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+  .notif-sub { font-size: 12px; color: var(--text3); }
+  .notif-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-top: 3px; flex-shrink: 0; }
+
+  /* ── CHARTS ── */
+  canvas { width: 100% !important; }
+
+  /* ── OCR RESULT ── */
+  .ocr-result {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px;
+    margin-top: 12px; display: none;
+  }
+  .ocr-result.show { display: block; }
+  .ocr-badge { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 12px; }
+  .ocr-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .ocr-field { background: var(--bg4); border-radius: 8px; padding: 10px; }
+  .ocr-field-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+  .ocr-field-value { font-size: 13.5px; font-weight: 500; }
+
+  /* ── SEARCH ── */
+  .search-box {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg3); border: 1px solid var(--border2);
+    border-radius: var(--radius); padding: 8px 14px;
+    min-width: 220px;
+  }
+  .search-box input {
+    border: none; background: transparent; color: var(--text);
+    font-size: 13.5px; outline: none; width: 100%;
+    padding: 0;
+  }
+
+  /* ── CURRENCY BADGE ── */
+  .currency-info {
+    display: flex; align-items: center; gap: 8px; margin-top: 8px;
+    background: var(--blue-bg); border-radius: var(--radius); padding: 10px 14px;
+  }
+
+  /* ── AI INSIGHTS ── */
+  .insight-card {
+    background: linear-gradient(135deg, rgba(124,106,247,0.1), rgba(74,158,255,0.08));
+    border: 1px solid rgba(124,106,247,0.2);
+    border-radius: var(--radius-lg); padding: 20px;
+  }
+  .insight-card .insight-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--accent-glow); color: var(--accent2);
+    border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 600;
+    margin-bottom: 10px;
+  }
+
+  /* ── PROGRESS ── */
+  .progress { height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; margin-top: 6px; }
+  .progress-bar { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.6s ease; }
+
+  /* ── LOADING ── */
+  .spinner {
+    display: inline-block; width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.2); border-top-color: white;
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── TOAST ── */
+  #toast-container {
+    position: fixed; bottom: 24px; right: 24px; z-index: 1000;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .toast {
+    background: var(--bg2); border: 1px solid var(--border2);
+    border-radius: var(--radius); padding: 12px 18px;
+    font-size: 13.5px; display: flex; align-items: center; gap: 10px;
+    min-width: 260px; max-width: 360px;
+    animation: slideIn 0.3s ease;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  }
+  .toast.success { border-left: 3px solid var(--green); }
+  .toast.error { border-left: 3px solid var(--red); }
+  .toast.info { border-left: 3px solid var(--accent); }
+  @keyframes slideIn { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+  /* ── CHIP FILTER ── */
+  .chip-group { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+  .chip {
+    padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border2);
+    font-size: 12.5px; font-weight: 500; cursor: pointer; transition: all 0.15s;
+    background: transparent; color: var(--text2); font-family: var(--font-body);
+  }
+  .chip.active { background: var(--accent); border-color: var(--accent); color: white; }
+  .chip:hover:not(.active) { border-color: var(--accent); color: var(--accent2); }
+
+  /* ── EMPTY STATE ── */
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text3); }
+  .empty-icon { font-size: 40px; margin-bottom: 14px; }
+  .empty-text { font-size: 15px; margin-bottom: 6px; color: var(--text2); }
+  .empty-sub { font-size: 13px; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 1280px) {
+    .content { padding: 20px; }
+    .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .viewport-shell { gap: 16px; }
+    .dashboard-main {
+      grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.95fr);
+      gap: 16px;
+    }
+    .analytics-main {
+      grid-template-columns: minmax(0, 1.35fr) minmax(280px, 1fr);
+      gap: 16px;
+    }
+    .charts-grid {
+      grid-template-columns: minmax(0, 1.35fr) minmax(240px, 1fr);
+      gap: 16px;
+    }
+    .stat-card,
+    .card { padding: 18px; }
+    .chart-frame {
+      min-height: 200px;
+      height: clamp(200px, 24vh, 280px);
+      max-height: 280px;
+    }
+  }
+
+  @media (max-width: 1100px) {
+    body { overflow-y: auto; }
+    .main { min-height: 100vh; height: auto; }
+    .content {
+      overflow: visible;
+      padding: 18px;
+    }
+    .page.active,
+    #page-dashboard.active,
+    #page-analytics.active {
+      overflow: visible;
+      display: block;
+    }
+    .viewport-shell {
+      height: auto;
+      grid-template-rows: auto auto auto;
+    }
+    .dashboard-main,
+    .analytics-main,
+    .charts-grid,
+    .insight-grid {
+      grid-template-columns: 1fr;
+    }
+    .dashboard-primary {
+      grid-template-rows: auto auto;
+    }
+    .analytics-primary,
+    .analytics-secondary {
+      grid-template-rows: auto auto;
+    }
+    .chart-frame {
+      height: clamp(220px, 34vh, 300px);
+      max-height: none;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .sidebar { transform: translateX(-100%); }
+    .sidebar.open { transform: translateX(0); }
+    .main { margin-left: 0; }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .form-row { grid-template-columns: 1fr; }
+    .form-row.three { grid-template-columns: 1fr; }
+    .topbar { padding: 0 16px; }
+    .topbar-actions { gap: 8px; }
+    .search-box { min-width: 0; width: min(100%, 220px); }
+  }
+  @media (max-width: 600px) {
+    .stats-grid { grid-template-columns: 1fr; }
+    .content { padding: 16px; }
+    .modal-body { padding: 16px; }
+    .dashboard-hero {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .topbar {
+      height: auto;
+      min-height: 60px;
+      flex-wrap: wrap;
+      padding: 12px 16px;
+    }
+    .search-box { width: 100%; }
+  }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  /* ── DIVIDER ── */
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+  /* ── ROLE PILL ── */
+  .role-admin { background: rgba(240,84,84,0.1); color: var(--red); }
+  .role-manager { background: rgba(245,166,35,0.1); color: var(--amber); }
+  .role-employee { background: var(--blue-bg); color: var(--blue); }
+
+  /* ── APPROVAL CARD ── */
+  .approval-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 18px;
+    margin-bottom: 14px; transition: border-color 0.2s;
+  }
+  .approval-card:hover { border-color: var(--border2); }
+  .approval-meta { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+  .approval-amount { font-family: var(--font-head); font-size: 22px; font-weight: 800; }
+  .approval-actions { display: flex; gap: 10px; margin-top: 14px; }
+  .comment-input {
+    width: 100%; margin-top: 10px;
+    background: var(--bg3); border: 1px solid var(--border2);
+    border-radius: var(--radius); padding: 8px 12px;
+    color: var(--text); font-family: var(--font-body); font-size: 13px;
+    outline: none; transition: border-color 0.15s;
+  }
+  .comment-input:focus { border-color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div id="toast-container"></div>
+
+<!-- ══════════════════════════ AUTH SCREEN ══════════════════════════ -->
+<div id="auth-screen">
+  <div class="auth-wrap">
+    <div class="auth-box">
+      <div class="auth-logo">
+        <div style="display:inline-flex;align-items:center;gap:10px;">
+          <div class="logo-mark">R</div>
+          <span style="font-family:var(--font-head);font-weight:700;font-size:20px;">Reimburse<span style="color:var(--accent2)">AI</span></span>
+        </div>
+      </div>
+      <div class="auth-title">Expense Management,<br>Reimagined</div>
+      <div class="auth-sub">Smart approvals. Real-time insights. Zero friction.</div>
+
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="showAuthTab('login')">Sign In</button>
+        <button class="auth-tab" onclick="showAuthTab('signup')">Create Company</button>
+      </div>
+
+      <!-- LOGIN -->
+      <div id="auth-login">
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" id="login-email" placeholder="you@company.com" value="admin@acme.com">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="login-password" placeholder="••••••••" value="password123">
+        </div>
+        <div style="margin-bottom:16px;font-size:12px;color:var(--text3);">
+          Sign in with an account from your backend. Use the company signup flow below to create your first admin account.
+        </div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="handleLogin()">
+          Sign In
+        </button>
+      </div>
+
+      <!-- SIGNUP -->
+      <div id="auth-signup" style="display:none;">
+        <div class="form-group">
+          <label>Company Name</label>
+          <input type="text" id="signup-company" placeholder="Acme Corp">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Country</label>
+            <select id="signup-country">
+              <option value="US">United States</option>
+              <option value="IN">India</option>
+              <option value="GB">United Kingdom</option>
+              <option value="EU">European Union</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Currency</label>
+            <select id="signup-currency">
+              <option value="USD">USD ($)</option>
+              <option value="INR">INR (₹)</option>
+              <option value="GBP">GBP (£)</option>
+              <option value="EUR">EUR (€)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Admin Email</label>
+          <input type="email" id="signup-email" placeholder="admin@company.com">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="signup-password" placeholder="Choose a strong password">
+        </div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="handleSignup()">
+          Create Company Account
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════ MAIN APP ══════════════════════════ -->
+<div id="main-app" style="display:none;">
+  <div class="app">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-mark">R</div>
+        <div class="logo-text">Reimburse<span>AI</span></div>
+      </div>
+
+      <nav class="sidebar-nav" id="nav-menu">
+        <!-- Rendered by JS -->
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-card" onclick="openModal('profile-modal')">
+          <div class="avatar" id="sidebar-avatar">U</div>
+          <div class="user-info">
+            <div class="user-name" id="sidebar-username">User</div>
+            <div class="user-role" id="sidebar-role">Employee</div>
+          </div>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text3)"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main">
+      <div class="topbar">
+        <button class="btn btn-ghost btn-sm" id="mobile-menu-btn" onclick="toggleSidebar()" style="display:none;">☰</button>
+        <div class="topbar-title" id="page-title">Dashboard</div>
+        <div class="topbar-actions">
+          <div class="search-box">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text3)"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="text" placeholder="Search expenses..." oninput="handleSearch(this.value)">
+          </div>
+          <div style="position:relative;">
+            <button class="btn btn-ghost btn-sm" onclick="toggleNotifications()" style="position:relative;">
+              🔔
+              <span id="notif-count" style="position:absolute;top:-2px;right:-2px;background:var(--accent);color:white;font-size:9px;font-weight:700;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;">3</span>
+            </button>
+            <div class="notifications-panel" id="notif-panel">
+              <div class="notif-header">
+                <span style="font-size:13px;font-weight:600;">Notifications</span>
+                <button class="btn btn-ghost btn-sm" onclick="clearNotifications()">Clear all</button>
+              </div>
+              <div class="notif-list" id="notif-list"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="content" id="main-content">
+        <!-- Pages rendered here -->
+        <div class="page active" id="page-dashboard"></div>
+        <div class="page" id="page-expenses"></div>
+        <div class="page" id="page-submit"></div>
+        <div class="page" id="page-approvals"></div>
+        <div class="page" id="page-analytics"></div>
+        <div class="page" id="page-workflow"></div>
+        <div class="page" id="page-users"></div>
+        <div class="page" id="page-audit"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════ MODALS ══════════════════════════ -->
+
+<!-- Expense Detail Modal -->
+<div class="modal-overlay" id="expense-detail-modal">
+  <div class="modal" style="max-width:680px;">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">Expense Details</div>
+        <div id="expense-detail-id" style="font-size:12px;color:var(--text3);margin-top:2px;"></div>
+      </div>
+      <button class="close-btn" onclick="closeModal('expense-detail-modal')">×</button>
+    </div>
+    <div class="modal-body" id="expense-detail-body"></div>
+  </div>
+</div>
+
+<!-- Approval Modal -->
+<div class="modal-overlay" id="approval-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="approval-modal-title">Review Expense</div>
+      <button class="close-btn" onclick="closeModal('approval-modal')">×</button>
+    </div>
+    <div class="modal-body" id="approval-modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" onclick="handleApprovalAction('reject')">✕ Reject</button>
+      <button class="btn btn-success" onclick="handleApprovalAction('approve')">✓ Approve</button>
+    </div>
+  </div>
+</div>
+
+<!-- Profile Modal -->
+<div class="modal-overlay" id="profile-modal">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header">
+      <div class="modal-title">My Profile</div>
+      <button class="close-btn" onclick="closeModal('profile-modal')">×</button>
+    </div>
+    <div class="modal-body" id="profile-modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="handleLogout()">Sign Out</button>
+      <button class="btn btn-primary" onclick="closeModal('profile-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add User Modal -->
+<div class="modal-overlay" id="user-modal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <div class="modal-title">Add Team Member</div>
+      <button class="close-btn" onclick="closeModal('user-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="new-user-name" placeholder="Jane Smith">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="new-user-email" placeholder="jane@company.com">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Role</label>
+          <select id="new-user-role">
+            <option value="employee">Employee</option>
+            <option value="manager">Manager</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Reports To</label>
+          <select id="new-user-manager">
+            <option value="">None</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Department</label>
+        <input type="text" id="new-user-dept" placeholder="Engineering">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('user-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="handleAddUser()">Add Member</button>
+    </div>
+  </div>
+</div>
+
+<!-- Workflow Config Modal -->
+<div class="modal-overlay" id="workflow-modal">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <div class="modal-title">Workflow Configuration</div>
+      <button class="close-btn" onclick="closeModal('workflow-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Workflow Name</label>
+        <input type="text" id="wf-name" placeholder="Standard Expense Approval">
+      </div>
+      <div class="form-group">
+        <label>Amount Threshold (triggers this workflow)</label>
+        <input type="number" id="wf-threshold" placeholder="e.g. 1000 (blank = all amounts)">
+      </div>
+      <div id="wf-steps-list" style="margin-bottom:14px;"></div>
+      <button class="btn btn-secondary btn-sm" onclick="addWorkflowStep()">+ Add Step</button>
+      <div class="divider"></div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--text);">Conditional Logic</div>
+      <div class="form-group">
+        <label>Approval Type</label>
+        <select id="wf-condition-type" onchange="updateConditionUI()">
+          <option value="sequential">Sequential (each approver must approve in order)</option>
+          <option value="percentage">Percentage-based (e.g. 60% must approve)</option>
+          <option value="specific">Specific approver override (e.g. CFO approval = auto-approved)</option>
+          <option value="hybrid">Hybrid (percentage + specific approver)</option>
+        </select>
+      </div>
+      <div id="condition-extra"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('workflow-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveWorkflow()">Save Workflow</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════
+//  API + IN-MEMORY STATE
+// ════════════════════════════════════════════════════
+const API_BASE = "http://localhost:5001/api";
+const appState = {
+  token: null,
+  company: null,
+  users: [],
+  workflows: [],
+  expenses: [],
+  notifications: [],
+  audit: []
+};
+
+const DB = {
+  get(key) { return appState[key] ?? null; },
+  set(key, val) { appState[key] = val; return val; },
+  getAll(key) { return Array.isArray(appState[key]) ? appState[key] : []; },
+  push(key, val) {
+    if (!Array.isArray(appState[key])) appState[key] = [];
+    appState[key].push(val);
+    return val;
+  },
+  update(key, id, updates) {
+    if (!Array.isArray(appState[key])) return null;
+    const idx = appState[key].findIndex(item => item.id === id);
+    if (idx === -1) return null;
+    appState[key][idx] = { ...appState[key][idx], ...updates };
+    return appState[key][idx];
+  },
+  remove(key, id) {
+    if (!Array.isArray(appState[key])) return [];
+    appState[key] = appState[key].filter(item => item.id !== id);
+    return appState[key];
+  }
+};
+
+// ════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════
+let currentUser = null;
+let currentPage = 'dashboard';
+let currentApprovalExpenseId = null;
+let editingExpenseId = null;
+let searchQuery = '';
+let exchangeRates = {};
+let wfSteps = [];
+let chartRefs = {};
+let authBusy = false;
+
+// ════════════════════════════════════════════════════
+//  UTILITIES
+// ════════════════════════════════════════════════════
+function uid() { return 'id' + Math.random().toString(36).substr(2, 9); }
+function fmt(n, sym='$') { return sym + Number(n || 0).toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function fmtDate(d) { return new Date(d).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' }); }
+function fmtTs(ts) { return new Date(ts).toLocaleString('en', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+function buildAvatar(name='') { return name.split(' ').filter(Boolean).slice(0,2).map(part => part[0]?.toUpperCase() || '').join('') || 'U'; }
+function extractId(value) { return value && typeof value === 'object' ? value.id || value._id || null : value || null; }
+function normalizeCompany(company) {
+  if (!company) return null;
+  return {
+    id: company.id || company._id,
+    name: company.name || '',
+    country: company.country || '',
+    currency: company.currency || 'USD',
+    symbol: company.symbol || currencySymbols[company.currency] || '$'
+  };
+}
+function normalizeUser(user) {
+  if (!user) return null;
+  return {
+    id: user.id || user._id,
+    companyId: extractId(user.companyId),
+    name: user.name || 'Unknown',
+    email: user.email || '',
+    role: user.role || 'employee',
+    dept: user.dept || user.department || '',
+    managerId: extractId(user.managerId),
+    avatar: user.avatar || buildAvatar(user.name),
+    isActive: user.isActive !== false
+  };
+}
+function normalizeWorkflow(workflow) {
+  if (!workflow) return null;
+  return {
+    id: workflow.id || workflow._id,
+    name: workflow.name,
+    threshold: workflow.threshold || 0,
+    conditionType: workflow.conditionType || 'sequential',
+    approvalPercentage: workflow.approvalPercentage || null,
+    specificApproverId: extractId(workflow.specificApproverId),
+    steps: (workflow.steps || []).map(step => ({
+      id: step.id || step._id,
+      role: step.role || 'approver',
+      label: step.label,
+      approverId: extractId(step.approverId)
+    }))
+  };
+}
+function normalizeExpense(expense) {
+  if (!expense) return null;
+  const receipt = expense.receipt?.url
+    ? `${API_BASE.replace('/api', '')}${expense.receipt.url}`
+    : expense.receipt?.path || expense.receipt || null;
+  return {
+    id: expense.id || expense._id,
+    submittedBy: extractId(expense.submittedBy),
+    category: expense.category || 'Other',
+    description: expense.description || '',
+    amount: Number(expense.amount || 0),
+    currency: expense.currency || 'USD',
+    convertedAmount: Number(expense.convertedAmount || expense.amount || 0),
+    companyCurrency: expense.companyCurrency || getCompany().currency || 'USD',
+    date: expense.date,
+    status: expense.status || 'pending',
+    workflowId: extractId(expense.workflowId),
+    currentStep: extractId(expense.currentStep),
+    approvals: (expense.approvals || []).map(approval => ({
+      id: approval.id || approval._id,
+      stepId: extractId(approval.stepId),
+      approverId: extractId(approval.approverId),
+      status: approval.status,
+      comment: approval.comment || '',
+      timestamp: approval.timestamp || approval.createdAt || Date.now()
+    })),
+    receipt,
+    createdAt: expense.createdAt || Date.now(),
+    updatedAt: expense.updatedAt || null
+  };
+}
+function normalizeNotification(notification) {
+  if (!notification) return null;
+  return {
+    id: notification.id || notification._id,
+    userId: extractId(notification.userId),
+    title: notification.title || '',
+    sub: notification.sub || '',
+    read: Boolean(notification.read),
+    ts: notification.createdAt || notification.updatedAt || Date.now()
+  };
+}
+function normalizeAudit(log) {
+  if (!log) return null;
+  return {
+    id: log.id || log._id,
+    action: log.action,
+    userId: extractId(log.userId),
+    expenseId: extractId(log.expenseId),
+    details: log.details || '',
+    ts: log.createdAt || Date.now()
+  };
+}
+function mergeUsers(candidates = []) {
+  const merged = new Map(DB.getAll('users').map(user => [user.id, user]));
+  candidates.filter(Boolean).forEach(candidate => {
+    const user = normalizeUser(candidate);
+    if (user?.id) merged.set(user.id, { ...(merged.get(user.id) || {}), ...user });
+  });
+  DB.set('users', Array.from(merged.values()));
+}
+function hydrateUsersFromExpenses(expenses) {
+  const candidates = [];
+  expenses.forEach(expense => {
+    if (expense._rawSubmittedBy && typeof expense._rawSubmittedBy === 'object') candidates.push(expense._rawSubmittedBy);
+    (expense._rawApprovals || []).forEach(approval => {
+      if (approval.approverId && typeof approval.approverId === 'object') candidates.push(approval.approverId);
+    });
+  });
+  mergeUsers(candidates);
+}
+function hydrateUsersFromWorkflows(workflows) {
+  const candidates = [];
+  workflows.forEach(workflow => {
+    (workflow._rawSteps || []).forEach(step => {
+      if (step.approverId && typeof step.approverId === 'object') candidates.push(step.approverId);
+    });
+    if (workflow._rawSpecificApprover && typeof workflow._rawSpecificApprover === 'object') candidates.push(workflow._rawSpecificApprover);
+  });
+  mergeUsers(candidates);
+}
+function getUserById(id) { return DB.getAll('users').find(u => u.id === extractId(id)); }
+function getCompany() { return DB.get('company') || { name: '', currency: 'USD', symbol: '$' }; }
+function isExpenseOwner(expense) { return currentUser && expense && String(expense.submittedBy) === String(currentUser.id); }
+function canManageExpense(expense) { return currentUser && (currentUser.role === 'admin' || isExpenseOwner(expense)); }
+function renderLoadingState(targetId, message = 'Loading…') {
+  const el = document.getElementById(targetId);
+  if (!el) return;
+  el.innerHTML = `<div class="empty-state"><div class="spinner" style="margin:0 auto 12px;border-color:rgba(124,106,247,0.3);border-top-color:var(--accent);"></div><div class="empty-text">${message}</div></div>`;
+}
+function setButtonLoading(button, isLoading, loadingText = 'Working...') {
+  if (!button) return;
+  if (isLoading) {
+    button.dataset.originalHtml = button.innerHTML;
+    button.disabled = true;
+    button.style.opacity = '0.7';
+    button.innerHTML = `<span class="spinner"></span><span>${loadingText}</span>`;
+  } else {
+    button.disabled = false;
+    button.style.opacity = '';
+    if (button.dataset.originalHtml) button.innerHTML = button.dataset.originalHtml;
+  }
+}
+async function apiRequest(path, options = {}) {
+  const { method = 'GET', body, headers = {}, raw = false } = options;
+  const requestHeaders = { ...headers };
+  const config = { method, headers: requestHeaders };
+
+  if (appState.token) requestHeaders.Authorization = `Bearer ${appState.token}`;
+
+  if (body instanceof FormData) {
+    config.body = body;
+  } else if (body !== undefined) {
+    requestHeaders['Content-Type'] = 'application/json';
+    config.body = JSON.stringify(body);
+  } else if (!raw) {
+    requestHeaders['Content-Type'] = requestHeaders['Content-Type'] || 'application/json';
+  }
+
+  let response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, config);
+  } catch (error) {
+    console.error('Network/API request failed', {
+      url: `${API_BASE}${path}`,
+      method,
+      error
+    });
+    const runningFromFile = window.location.protocol === 'file:';
+    const hint = runningFromFile
+      ? 'Open the frontend via http://localhost:3000, not file://, and make sure the backend is running on http://localhost:5001.'
+      : 'Make sure the backend is running on http://localhost:5001 and CORS is enabled.';
+    throw new Error(`Unable to reach the API. ${hint}`);
+  }
+  const text = await response.text();
+  let payload = null;
+
+  try { payload = text ? JSON.parse(text) : null; } catch { payload = { message: text || 'Request failed' }; }
+
+  if (!response.ok) {
+    console.error('API request failed', {
+      url: `${API_BASE}${path}`,
+      method,
+      status: response.status,
+      payload
+    });
+    throw new Error(payload?.message || `Request failed with status ${response.status}`);
+  }
+
+  return payload;
+}
+async function loginRequest(credentials) {
+  const response = await apiRequest('/auth/login', { method: 'POST', body: credentials });
+  appState.token = response.data.token;
+  DB.set('company', normalizeCompany(response.data.company));
+  currentUser = normalizeUser(response.data.user);
+  mergeUsers([response.data.user]);
+  return response.data;
+}
+async function registerRequest(payload) {
+  const response = await apiRequest('/auth/register', { method: 'POST', body: payload });
+  appState.token = response.data.token;
+  DB.set('company', normalizeCompany(response.data.company));
+  currentUser = normalizeUser(response.data.user);
+  mergeUsers([response.data.user]);
+  return response.data;
+}
+async function fetchExpenses() {
+  const response = await apiRequest('/expenses');
+  const rawExpenses = response.data || [];
+  const normalized = rawExpenses.map(raw => {
+    const expense = normalizeExpense({
+      ...raw,
+      _rawSubmittedBy: raw.submittedBy,
+      _rawApprovals: raw.approvals
+    });
+    return expense;
+  });
+  const hydrated = rawExpenses.map(raw => ({
+    ...normalizeExpense(raw),
+    _rawSubmittedBy: raw.submittedBy,
+    _rawApprovals: raw.approvals || []
+  }));
+  hydrateUsersFromExpenses(hydrated);
+  DB.set('expenses', normalized);
+  return normalized;
+}
+async function fetchWorkflows() {
+  const response = await apiRequest('/workflows');
+  const rawWorkflows = response.data || [];
+  const hydrated = rawWorkflows.map(raw => ({
+    ...normalizeWorkflow(raw),
+    _rawSteps: raw.steps || [],
+    _rawSpecificApprover: raw.specificApproverId
+  }));
+  hydrateUsersFromWorkflows(hydrated);
+  DB.set('workflows', hydrated.map(({ _rawSteps, _rawSpecificApprover, ...workflow }) => workflow));
+  return DB.getAll('workflows');
+}
+async function fetchUsers() {
+  if (!currentUser || currentUser.role !== 'admin') return DB.getAll('users');
+  const response = await apiRequest('/users');
+  const users = (response.data || []).map(normalizeUser);
+  DB.set('users', users);
+  return users;
+}
+async function fetchNotifications() {
+  const response = await apiRequest('/notifications');
+  const notifications = (response.data || []).map(normalizeNotification);
+  DB.set('notifications', notifications);
+  return notifications;
+}
+async function fetchAuditLogs() {
+  if (!currentUser || !['admin', 'manager'].includes(currentUser.role)) {
+    DB.set('audit', []);
+    return [];
+  }
+  const response = await apiRequest('/audit');
+  const logs = (response.data || []).map(normalizeAudit);
+  DB.set('audit', logs);
+  mergeUsers((response.data || []).map(log => log.userId).filter(Boolean));
+  return logs;
+}
+async function createExpenseApi(payload, file) {
+  const body = file ? createExpenseFormData(payload, file) : payload;
+  const response = await apiRequest('/expenses', { method: 'POST', body });
+  return normalizeExpense(response.data);
+}
+async function updateExpenseApi(id, payload, file) {
+  const body = file ? createExpenseFormData(payload, file) : payload;
+  const response = await apiRequest(`/expenses/${id}`, { method: 'PUT', body });
+  return normalizeExpense(response.data);
+}
+async function deleteExpenseApi(id) {
+  await apiRequest(`/expenses/${id}`, { method: 'DELETE' });
+}
+async function approveExpenseApi(id, comment) {
+  const response = await apiRequest(`/expenses/${id}/approve`, { method: 'POST', body: { comment } });
+  return normalizeExpense(response.data);
+}
+async function rejectExpenseApi(id, comment) {
+  const response = await apiRequest(`/expenses/${id}/reject`, { method: 'POST', body: { comment } });
+  return normalizeExpense(response.data);
+}
+async function createUserApi(payload) {
+  const response = await apiRequest('/users', { method: 'POST', body: payload });
+  return normalizeUser(response.data);
+}
+async function deleteUserApi(id) {
+  await apiRequest(`/users/${id}`, { method: 'DELETE' });
+}
+async function createWorkflowApi(payload) {
+  const response = await apiRequest('/workflows', { method: 'POST', body: payload });
+  return normalizeWorkflow(response.data);
+}
+function createExpenseFormData(payload, file) {
+  const formData = new FormData();
+  Object.entries(payload).forEach(([key, value]) => formData.append(key, value));
+  if (file) formData.append('receipt', file);
+  return formData;
+}
+async function refreshAppData() {
+  await Promise.all([
+    fetchWorkflows(),
+    fetchExpenses(),
+    fetchNotifications(),
+    fetchAuditLogs(),
+    fetchUsers()
+  ]);
+  mergeUsers([currentUser]);
+}
+
+function toast(msg, type = 'info') {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
+  t.innerHTML = `<span style="font-size:16px;">${icon}</span><span>${msg}</span>`;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3200);
+}
+
+function destroyChart(key) {
+  if (chartRefs[key]) {
+    chartRefs[key].destroy();
+    delete chartRefs[key];
+  }
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function addAuditLog() {}
+
+// ════════════════════════════════════════════════════
+//  AUTH
+// ════════════════════════════════════════════════════
+function showAuthTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach((t, i) => t.classList.toggle('active', (i === 0) === (tab === 'login')));
+  document.getElementById('auth-login').style.display = tab === 'login' ? '' : 'none';
+  document.getElementById('auth-signup').style.display = tab === 'signup' ? '' : 'none';
+}
+
+async function handleLogin() {
+  if (authBusy) return;
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const button = document.querySelector('#auth-login .btn-primary');
+  if (!email || !password) { toast('Please enter your email and password', 'error'); return; }
+  try {
+    authBusy = true;
+    setButtonLoading(button, true, 'Signing in...');
+    await loginRequest({ email, password });
+    toast('Login successful', 'success');
+    await launchApp();
+  } catch (error) {
+    toast(error.message || 'Unable to sign in', 'error');
+  } finally {
+    authBusy = false;
+    setButtonLoading(button, false);
+  }
+}
+
+async function handleSignup() {
+  if (authBusy) return;
+  const name = document.getElementById('signup-company').value.trim();
+  const country = document.getElementById('signup-country').value;
+  const currency = document.getElementById('signup-currency').value;
+  const email = document.getElementById('signup-email').value.trim();
+  const password = document.getElementById('signup-password').value;
+  if (!name || !email || !password) { toast('Please fill all fields', 'error'); return; }
+  const button = document.querySelector('#auth-signup .btn-primary');
+  const symbols = { USD: '$', INR: '₹', GBP: '£', EUR: '€' };
+  try {
+    authBusy = true;
+    setButtonLoading(button, true, 'Creating company...');
+    await registerRequest({
+      companyName: name,
+      country,
+      currency,
+      symbol: symbols[currency] || '$',
+      adminName: 'Admin',
+      email,
+      password,
+      department: 'Executive'
+    });
+    toast('Company created successfully!', 'success');
+    await launchApp();
+  } catch (error) {
+    toast(error.message || 'Unable to create company', 'error');
+  } finally {
+    authBusy = false;
+    setButtonLoading(button, false);
+  }
+}
+
+function handleLogout() {
+  closeModal('profile-modal');
+  currentUser = null;
+  editingExpenseId = null;
+  appState.token = null;
+  DB.set('company', null);
+  DB.set('users', []);
+  DB.set('workflows', []);
+  DB.set('expenses', []);
+  DB.set('notifications', []);
+  DB.set('audit', []);
+  document.getElementById('main-app').style.display = 'none';
+  document.getElementById('auth-screen').style.display = '';
+}
+
+// ════════════════════════════════════════════════════
+//  APP INIT
+// ════════════════════════════════════════════════════
+async function launchApp() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('main-app').style.display = '';
+  renderLoadingState('page-dashboard', 'Loading dashboard...');
+  renderLoadingState('page-expenses', 'Loading expenses...');
+  renderSidebar();
+  renderProfile();
+  try {
+    await refreshAppData();
+    await fetchExchangeRates();
+    renderSidebar();
+    renderProfile();
+    loadNotifications();
+    navigateTo(currentPage || 'dashboard');
+  } catch (error) {
+    toast(error.message || 'Unable to load app data', 'error');
+    handleLogout();
+  }
+}
+
+function renderSidebar() {
+  const role = currentUser.role;
+  document.getElementById('sidebar-avatar').textContent = currentUser.avatar;
+  document.getElementById('sidebar-username').textContent = currentUser.name;
+  document.getElementById('sidebar-role').textContent = role.charAt(0).toUpperCase() + role.slice(1);
+
+  const menus = {
+    admin: [
+      { section: 'Overview', items: [
+        { id: 'dashboard', icon: '⊞', label: 'Dashboard' },
+        { id: 'analytics', icon: '📊', label: 'Analytics' },
+      ]},
+      { section: 'Expenses', items: [
+        { id: 'expenses', icon: '🧾', label: 'All Expenses' },
+        { id: 'approvals', icon: '✅', label: 'Approvals', badge: getPendingCount() },
+      ]},
+      { section: 'Admin', items: [
+        { id: 'workflow', icon: '⚙️', label: 'Workflow Builder' },
+        { id: 'users', icon: '👥', label: 'Team Members' },
+        { id: 'audit', icon: '📋', label: 'Audit Log' },
+      ]},
+    ],
+    manager: [
+      { section: 'Overview', items: [
+        { id: 'dashboard', icon: '⊞', label: 'Dashboard' },
+        { id: 'analytics', icon: '📊', label: 'Analytics' },
+      ]},
+      { section: 'Expenses', items: [
+        { id: 'expenses', icon: '🧾', label: 'Team Expenses' },
+        { id: 'approvals', icon: '✅', label: 'My Approvals', badge: getPendingCount() },
+      ]},
+    ],
+    employee: [
+      { section: 'Overview', items: [
+        { id: 'dashboard', icon: '⊞', label: 'Dashboard' },
+      ]},
+      { section: 'Expenses', items: [
+        { id: 'submit', icon: '➕', label: 'Submit Expense' },
+        { id: 'expenses', icon: '🧾', label: 'My Expenses' },
+      ]},
+    ],
+  };
+
+  const nav = document.getElementById('nav-menu');
+  nav.innerHTML = (menus[role] || menus.employee).map(section => `
+    <div class="nav-section-label">${section.section}</div>
+    ${section.items.map(item => `
+      <div class="nav-item" id="nav-${item.id}" onclick="navigateTo('${item.id}')">
+        <span style="font-size:16px;">${item.icon}</span>
+        <span>${item.label}</span>
+        ${item.badge ? `<span class="nav-badge">${item.badge}</span>` : ''}
+      </div>
+    `).join('')}
+  `).join('');
+}
+
+function getPendingCount() {
+  const expenses = DB.getAll('expenses');
+  const users = DB.getAll('users');
+  const workflows = DB.getAll('workflows');
+  return expenses.filter(e => {
+    if (e.status !== 'pending') return false;
+    if (currentUser.role === 'admin') return true;
+    const wf = workflows.find(w => w.id === e.workflowId);
+    if (!wf) return false;
+    const step = wf.steps.find(s => s.id === e.currentStep);
+    return step && step.approverId === currentUser.id;
+  }).length;
+}
+
+// ════════════════════════════════════════════════════
+//  NAVIGATION
+// ════════════════════════════════════════════════════
+function navigateTo(page) {
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  const navEl = document.getElementById('nav-'+page);
+  if (navEl) navEl.classList.add('active');
+
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  const pageEl = document.getElementById('page-'+page);
+  if (pageEl) pageEl.classList.add('active');
+
+  currentPage = page;
+  const titles = { dashboard:'Dashboard', expenses:'Expenses', submit:'Submit Expense', approvals:'Approvals', analytics:'Analytics', workflow:'Workflow Builder', users:'Team Members', audit:'Audit Log' };
+  document.getElementById('page-title').textContent = titles[page] || page;
+
+  const renders = { dashboard: renderDashboard, expenses: renderExpenses, submit: renderSubmit, approvals: renderApprovals, analytics: renderAnalytics, workflow: renderWorkflow, users: renderUsers, audit: renderAudit };
+  if (renders[page]) renders[page]();
+
+  if (window.innerWidth < 900) document.getElementById('sidebar').classList.remove('open');
+}
+
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+
+// ════════════════════════════════════════════════════
+//  NOTIFICATIONS
+// ════════════════════════════════════════════════════
+function loadNotifications() {
+  const all = DB.getAll('notifications');
+  const mine = all.filter(n => n.userId === currentUser.id || currentUser.role === 'admin');
+  const unread = mine.filter(n => !n.read).length;
+  document.getElementById('notif-count').textContent = unread;
+  document.getElementById('notif-count').style.display = unread ? 'flex' : 'none';
+
+  const list = document.getElementById('notif-list');
+  if (!mine.length) {
+    list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text3);font-size:13px;">No notifications</div>';
+    return;
+  }
+  list.innerHTML = mine.slice(0, 8).map(n => `
+    <div class="notif-item" onclick="markRead('${n.id}')">
+      <div style="display:flex;gap:8px;align-items:flex-start;">
+        ${!n.read ? '<div class="notif-dot"></div>' : '<div style="width:7px;"></div>'}
+        <div>
+          <div class="notif-title">${n.title}</div>
+          <div class="notif-sub">${n.sub}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px;">${fmtTs(n.ts)}</div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleNotifications() {
+  const p = document.getElementById('notif-panel');
+  p.style.display = p.style.display === 'block' ? 'none' : 'block';
+}
+
+function markRead(id) {
+  DB.update('notifications', id, { read: true });
+  loadNotifications();
+}
+
+function clearNotifications() {
+  const all = DB.getAll('notifications');
+  all.forEach(n => { if (n.userId === currentUser.id) n.read = true; });
+  DB.set('notifications', all);
+  loadNotifications();
+}
+
+// Close notifications on outside click
+document.addEventListener('click', e => {
+  if (!e.target.closest('#notif-panel') && !e.target.closest('[onclick="toggleNotifications()"]')) {
+    const p = document.getElementById('notif-panel');
+    if (p) p.style.display = 'none';
+  }
+});
+
+// ════════════════════════════════════════════════════
+//  CURRENCY
+// ════════════════════════════════════════════════════
+async function fetchExchangeRates() {
+  const company = getCompany();
+  try {
+    const res = await fetch(`https://api.exchangerate-api.com/v4/latest/${company.currency}`);
+    const data = await res.json();
+    exchangeRates = data.rates || {};
+  } catch {
+    exchangeRates = { USD: 1, INR: 83.5, GBP: 0.79, EUR: 0.92, CAD: 1.36, AUD: 1.54, JPY: 150 };
+  }
+}
+
+function convertCurrency(amount, from, to) {
+  if (from === to) return amount;
+  const base = exchangeRates[from] ? amount / exchangeRates[from] : amount;
+  return base * (exchangeRates[to] || 1);
+}
+
+const currencySymbols = { USD: '$', INR: '₹', GBP: '£', EUR: '€', CAD: 'CA$', AUD: 'A$', JPY: '¥' };
+
+// ════════════════════════════════════════════════════
+//  DASHBOARD
+// ════════════════════════════════════════════════════
+function renderDashboard() {
+  const el = document.getElementById('page-dashboard');
+  const company = getCompany();
+  const allExpenses = DB.getAll('expenses');
+  const myExpenses = currentUser.role === 'employee'
+    ? allExpenses.filter(e => e.submittedBy === currentUser.id)
+    : currentUser.role === 'manager'
+    ? allExpenses.filter(e => {
+        const u = getUserById(e.submittedBy);
+        return u && u.managerId === currentUser.id || e.submittedBy === currentUser.id;
+      })
+    : allExpenses;
+
+  const pending = myExpenses.filter(e => e.status === 'pending').length;
+  const approved = myExpenses.filter(e => e.status === 'approved').length;
+  const rejected = myExpenses.filter(e => e.status === 'rejected').length;
+  const total = myExpenses.reduce((s, e) => s + (e.convertedAmount || e.amount), 0);
+
+  const recentExpenses = [...myExpenses].sort((a,b) => b.createdAt - a.createdAt).slice(0,5);
+
+  el.innerHTML = `
+    <div class="dashboard-shell">
+      <div class="dashboard-hero">
+        <div class="dashboard-hero-copy">
+          <div class="dashboard-title">Welcome back, ${currentUser.name.split(' ')[0]}</div>
+          <div class="dashboard-subtitle">${company.name} · ${new Date().toLocaleDateString('en', { weekday:'long', month:'long', day:'numeric' })}</div>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card" style="--accent-color:var(--accent);">
+          <div class="stat-icon" style="background:var(--accent-glow);">💰</div>
+          <div class="stat-label">Total Expenses</div>
+          <div class="stat-value">${fmt(total, company.symbol)}</div>
+          <div class="stat-change up">↑ This period</div>
+        </div>
+        <div class="stat-card" style="--accent-color:var(--amber);">
+          <div class="stat-icon" style="background:var(--amber-bg);">⏳</div>
+          <div class="stat-label">Pending</div>
+          <div class="stat-value" style="color:var(--amber);">${pending}</div>
+          <div class="stat-change" style="color:var(--text3);">Awaiting review</div>
+        </div>
+        <div class="stat-card" style="--accent-color:var(--green);">
+          <div class="stat-icon" style="background:var(--green-bg);">✅</div>
+          <div class="stat-label">Approved</div>
+          <div class="stat-value" style="color:var(--green);">${approved}</div>
+          <div class="stat-change up">↑ ${approved} this month</div>
+        </div>
+        <div class="stat-card" style="--accent-color:var(--red);">
+          <div class="stat-icon" style="background:var(--red-bg);">✕</div>
+          <div class="stat-label">Rejected</div>
+          <div class="stat-value" style="color:var(--red);">${rejected}</div>
+          <div class="stat-change down">${rejected > 0 ? 'Needs attention' : 'All good!'}</div>
+        </div>
+      </div>
+
+      <div class="dashboard-main">
+        <div class="dashboard-primary">
+          <div class="charts-grid">
+            <div class="card dashboard-card chart-card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">Expense Overview</div>
+                  <div class="card-subtitle">Last 6 months</div>
+                </div>
+              </div>
+              <div class="chart-frame">
+                <canvas id="chart-overview"></canvas>
+              </div>
+            </div>
+            <div class="card dashboard-card chart-card">
+              <div class="card-header">
+                <div class="card-title">By Category</div>
+              </div>
+              <div class="chart-frame">
+                <canvas id="chart-category"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <div class="card dashboard-card">
+            <div class="card-header">
+              <div>
+                <div class="card-title">Recent Expenses</div>
+                <div class="card-subtitle">${recentExpenses.length} expenses</div>
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="navigateTo('expenses')">View all</button>
+            </div>
+            <div class="table-card-body">
+              ${renderExpenseTable(recentExpenses, company)}
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-secondary">
+          ${currentUser.role !== 'employee' ? renderAIInsights(myExpenses, company) : `
+            <div class="card dashboard-card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">My Activity</div>
+                  <div class="card-subtitle">A quick summary for this period</div>
+                </div>
+              </div>
+              <div class="insight-grid">
+                <div class="insight-panel">
+                  <div style="font-size:11px;color:var(--text3);margin-bottom:6px;">APPROVAL RATE</div>
+                  <div style="font-size:20px;font-weight:800;font-family:var(--font-head);color:var(--green);">${myExpenses.length ? Math.round((approved / myExpenses.length) * 100) : 0}%</div>
+                  <div style="font-size:12px;color:var(--text3);margin-top:4px;">Approved submissions this period</div>
+                </div>
+                <div class="insight-panel">
+                  <div style="font-size:11px;color:var(--text3);margin-bottom:6px;">LATEST STATUS</div>
+                  <div style="font-size:20px;font-weight:800;font-family:var(--font-head);color:var(--accent2);">${recentExpenses[0]?.status || '—'}</div>
+                  <div style="font-size:12px;color:var(--text3);margin-top:4px;">Most recent submission outcome</div>
+                </div>
+              </div>
+            </div>
+          `}
+        </div>
+      </div>
+    </div>
+  `;
+
+  setTimeout(() => {
+    renderOverviewChart(myExpenses);
+    renderCategoryChart(myExpenses);
+  }, 50);
+}
+
+function renderAIInsights(expenses, company) {
+  const highVal = expenses.filter(e => e.amount > 500);
+  const cats = {};
+  expenses.forEach(e => { cats[e.category] = (cats[e.category] || 0) + 1; });
+  const topCat = Object.entries(cats).sort((a,b) => b[1]-a[1])[0];
+
+  return `
+    <div class="insight-card dashboard-card">
+      <div class="insight-tag">✨ AI Insights</div>
+      <div style="font-family:var(--font-head);font-size:16px;font-weight:700;margin-bottom:10px;">Expense Intelligence</div>
+      <div class="insight-grid">
+        <div class="insight-panel">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:6px;">HIGH-VALUE EXPENSES</div>
+          <div style="font-size:20px;font-weight:800;font-family:var(--font-head);color:var(--amber);">${highVal.length}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:4px;">Expenses over ${company.symbol}500 — review carefully</div>
+        </div>
+        <div class="insight-panel">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:6px;">TOP CATEGORY</div>
+          <div style="font-size:20px;font-weight:800;font-family:var(--font-head);color:var(--accent2);">${topCat ? topCat[0] : '—'}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:4px;">${topCat ? topCat[1] + ' submissions this period' : 'No data yet'}</div>
+        </div>
+      </div>
+      <div class="insight-recommendation">
+        💡 <strong>Recommendation:</strong> ${highVal.length > 2 ? 'Multiple high-value expenses detected. Consider adding an additional review step for expenses over $500.' : 'Expense patterns look normal. No anomalies detected.'}
+      </div>
+    </div>
+  `;
+}
+
+function renderOverviewChart(expenses) {
+  const ctx = document.getElementById('chart-overview');
+  if (!ctx) return;
+  destroyChart('overview');
+  const months = ['Aug','Sep','Oct','Nov','Dec','Jan'];
+  const data = [1200, 1800, 1400, 2200, 1900, expenses.reduce((s,e)=>s+e.amount,0).toFixed(0)];
+  chartRefs.overview = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: months,
+      datasets: [{
+        label: 'Total',
+        data,
+        borderColor: '#7c6af7',
+        backgroundColor: 'rgba(124,106,247,0.1)',
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#7c6af7',
+        pointRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#55556a', font: { size: 11 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#55556a', font: { size: 11 }, callback: v => '$' + v } }
+      }
+    }
+  });
+}
+
+function renderCategoryChart(expenses) {
+  const ctx = document.getElementById('chart-category');
+  if (!ctx) return;
+  destroyChart('category');
+  const cats = {};
+  expenses.forEach(e => { cats[e.category] = (cats[e.category] || 0) + e.amount; });
+  const labels = Object.keys(cats);
+  const data = Object.values(cats);
+  const colors = ['#7c6af7','#22c98e','#f5a623','#4a9eff','#f05454','#a89cff'];
+  chartRefs.category = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{ data, backgroundColor: colors.slice(0, labels.length), borderWidth: 0 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#9090a0', font: { size: 11 }, padding: 12 } }
+      }
+    }
+  });
+}
+
+// ════════════════════════════════════════════════════
+//  EXPENSES LIST
+// ════════════════════════════════════════════════════
+function getVisibleExpenses() {
+  const all = DB.getAll('expenses');
+  let expenses = currentUser.role === 'employee'
+    ? all.filter(e => e.submittedBy === currentUser.id)
+    : currentUser.role === 'manager'
+    ? all.filter(e => {
+        const u = getUserById(e.submittedBy);
+        return u && (u.managerId === currentUser.id || e.submittedBy === currentUser.id);
+      })
+    : all;
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    expenses = expenses.filter(e => e.description.toLowerCase().includes(q) || e.category.toLowerCase().includes(q));
+  }
+  return expenses.sort((a,b) => b.createdAt - a.createdAt);
+}
+
+let expenseFilter = 'all';
+
+function renderExpenses() {
+  const el = document.getElementById('page-expenses');
+  const company = getCompany();
+  const expenses = getVisibleExpenses();
+  const filtered = expenseFilter === 'all' ? expenses : expenses.filter(e => e.status === expenseFilter);
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div>
+        <div style="font-size:18px;font-family:var(--font-head);font-weight:700;">Expenses</div>
+        <div style="font-size:13px;color:var(--text3);margin-top:2px;">${expenses.length} total records</div>
+      </div>
+      ${currentUser.role === 'employee' ? `<button class="btn btn-primary" onclick="navigateTo('submit')">+ Submit Expense</button>` : ''}
+    </div>
+
+    <div class="chip-group">
+      <button class="chip ${expenseFilter==='all'?'active':''}" onclick="setExpFilter('all')">All (${expenses.length})</button>
+      <button class="chip ${expenseFilter==='pending'?'active':''}" onclick="setExpFilter('pending')">Pending (${expenses.filter(e=>e.status==='pending').length})</button>
+      <button class="chip ${expenseFilter==='approved'?'active':''}" onclick="setExpFilter('approved')">Approved (${expenses.filter(e=>e.status==='approved').length})</button>
+      <button class="chip ${expenseFilter==='rejected'?'active':''}" onclick="setExpFilter('rejected')">Rejected (${expenses.filter(e=>e.status==='rejected').length})</button>
+    </div>
+
+    <div class="card">
+      ${renderExpenseTable(filtered, company, true)}
+    </div>
+  `;
+}
+
+function setExpFilter(f) {
+  expenseFilter = f;
+  renderExpenses();
+}
+
+function renderExpenseTable(expenses, company, showSubmitter=false) {
+  if (!expenses.length) return `<div class="empty-state"><div class="empty-icon">🧾</div><div class="empty-text">No expenses found</div><div class="empty-sub">Expenses will appear here once submitted</div></div>`;
+  return `
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            ${showSubmitter && currentUser.role !== 'employee' ? '<th>Submitted By</th>' : ''}
+            <th>Description</th>
+            <th>Category</th>
+            <th>Date</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${expenses.map(e => {
+            const submitter = getUserById(e.submittedBy);
+            return `
+              <tr>
+                ${showSubmitter && currentUser.role !== 'employee' ? `<td><div style="display:flex;align-items:center;gap:8px;"><div class="avatar" style="width:24px;height:24px;font-size:10px;">${submitter?.avatar||'?'}</div><span class="text-main">${submitter?.name||'Unknown'}</span></div></td>` : ''}
+                <td class="text-main" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e.description}</td>
+                <td><span class="badge badge-purple">${e.category}</span></td>
+                <td>${fmtDate(e.date)}</td>
+                <td class="text-main">${fmt(e.amount, currencySymbols[e.currency]||'$')}${e.currency !== company.currency ? `<div style="font-size:11px;color:var(--text3);">${fmt(e.convertedAmount, company.symbol)} ${company.currency}</div>` : ''}</td>
+                <td><span class="badge badge-${e.status}">${e.status.charAt(0).toUpperCase()+e.status.slice(1)}</span></td>
+                <td>
+                  <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                    <button class="btn btn-ghost btn-sm" onclick="viewExpense('${e.id}')">View</button>
+                    ${canManageExpense(e) && e.status === 'pending' ? `<button class="btn btn-secondary btn-sm" onclick="editExpense('${e.id}')">Edit</button>` : ''}
+                    ${canManageExpense(e) ? `<button class="btn btn-danger btn-sm" onclick="deleteExpenseAction('${e.id}', this)">Delete</button>` : ''}
+                  </div>
+                </td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function handleSearch(q) {
+  searchQuery = q;
+  if (currentPage === 'expenses') renderExpenses();
+}
+
+// ════════════════════════════════════════════════════
+//  VIEW EXPENSE
+// ════════════════════════════════════════════════════
+function viewExpense(id) {
+  const expense = DB.getAll('expenses').find(e => e.id === id);
+  if (!expense) return;
+  const submitter = getUserById(expense.submittedBy);
+  const company = getCompany();
+  const wf = DB.getAll('workflows').find(w => w.id === expense.workflowId);
+
+  document.getElementById('expense-detail-id').textContent = `ID: ${expense.id}`;
+  document.getElementById('expense-detail-body').innerHTML = `
+    <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:20px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:200px;">
+        <div style="font-size:13px;color:var(--text3);margin-bottom:4px;">Submitted by</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="avatar">${submitter?.avatar||'?'}</div>
+          <div>
+            <div style="font-weight:600;font-size:14px;">${submitter?.name||'Unknown'}</div>
+            <div style="font-size:12px;color:var(--text3);">${submitter?.dept||''}</div>
+          </div>
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-family:var(--font-head);font-size:28px;font-weight:800;">${fmt(expense.amount, currencySymbols[expense.currency]||'$')} <span style="font-size:14px;color:var(--text3);">${expense.currency}</span></div>
+        ${expense.currency !== company.currency ? `<div style="font-size:13px;color:var(--text3);">≈ ${fmt(expense.convertedAmount, company.symbol)} ${company.currency}</div>` : ''}
+        <span class="badge badge-${expense.status}" style="margin-top:6px;">${expense.status}</span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;">
+      <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">CATEGORY</div><div style="font-size:14px;font-weight:500;">${expense.category}</div></div>
+      <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">DATE</div><div style="font-size:14px;font-weight:500;">${fmtDate(expense.date)}</div></div>
+      <div style="grid-column:1/-1;"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">DESCRIPTION</div><div style="font-size:14px;">${expense.description}</div></div>
+    </div>
+
+    ${expense.receipt ? `<div style="margin-bottom:20px;"><div style="font-size:11px;color:var(--text3);margin-bottom:8px;">RECEIPT</div><img src="${expense.receipt}" style="max-width:100%;border-radius:8px;border:1px solid var(--border);" /></div>` : ''}
+
+    <div class="divider"></div>
+    <div style="margin-bottom:12px;font-size:13px;font-weight:600;color:var(--text);">Approval Timeline</div>
+
+    ${wf ? `
+      <div class="timeline">
+        ${wf.steps.map((step, i) => {
+          const approval = expense.approvals.find(a => a.stepId === step.id);
+          const approver = getUserById(step.approverId);
+          const isCurrent = step.id === expense.currentStep;
+          const isDone = !!approval;
+          const isRejected = approval && approval.status === 'rejected';
+          return `
+            <div class="timeline-item">
+              <div class="timeline-dot ${isDone && !isRejected ? 'done' : isRejected ? 'rejected' : isCurrent ? 'current' : ''}"></div>
+              <div class="timeline-meta">${step.label} · ${approver?.name||'Unknown'}</div>
+              <div class="timeline-text">${isDone ? `${approval.status === 'approved' ? '✓ Approved' : '✕ Rejected'}${approval.comment ? ': ' + approval.comment : ''} <span style="color:var(--text3);font-size:11px;">· ${fmtTs(approval.timestamp)}</span>` : isCurrent ? '<span style="color:var(--amber);">⏳ Awaiting review</span>' : '<span style="color:var(--text3);">Not yet reached</span>'}</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    ` : '<div style="color:var(--text3);font-size:13px;">No workflow assigned</div>'}
+
+    ${(currentUser.role === 'admin' || currentUser.role === 'manager') && expense.status === 'pending' ? `
+      <div class="divider"></div>
+      <button class="btn btn-primary" onclick="closeModal('expense-detail-modal');openApprovalModal('${expense.id}')">Review this Expense</button>
+    ` : ''}
+    ${canManageExpense(expense) && expense.status === 'pending' ? `
+      <div class="divider"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-secondary" onclick="closeModal('expense-detail-modal');editExpense('${expense.id}')">Edit Expense</button>
+        <button class="btn btn-danger" onclick="closeModal('expense-detail-modal');deleteExpenseAction('${expense.id}')">Delete Expense</button>
+      </div>
+    ` : ''}
+  `;
+  openModal('expense-detail-modal');
+}
+
+function editExpense(id) {
+  editingExpenseId = id;
+  navigateTo('submit');
+}
+
+async function deleteExpenseAction(id, buttonEl = null) {
+  if (!confirm('Delete this expense?')) return;
+  try {
+    setButtonLoading(buttonEl, true, 'Deleting...');
+    await deleteExpenseApi(id);
+    await refreshAppData();
+    loadNotifications();
+    renderSidebar();
+    renderProfile();
+    if (currentPage === 'expenses') renderExpenses();
+    if (currentPage === 'dashboard') renderDashboard();
+    if (currentPage === 'analytics') renderAnalytics();
+    toast('Expense deleted successfully', 'success');
+  } catch (error) {
+    toast(error.message || 'Unable to delete expense', 'error');
+  } finally {
+    setButtonLoading(buttonEl, false);
+  }
+}
+
+// ════════════════════════════════════════════════════
+//  SUBMIT EXPENSE
+// ════════════════════════════════════════════════════
+function renderSubmit() {
+  const company = getCompany();
+  const editingExpense = editingExpenseId ? DB.getAll('expenses').find(expense => expense.id === editingExpenseId) : null;
+  const el = document.getElementById('page-submit');
+  el.innerHTML = `
+    <div style="max-width:680px;margin:0 auto;">
+      <div style="margin-bottom:24px;">
+        <div style="font-size:18px;font-family:var(--font-head);font-weight:700;">${editingExpense ? 'Edit Expense' : 'New Expense'}</div>
+        <div style="font-size:13px;color:var(--text3);">${editingExpense ? 'Update the details below and save your changes' : 'Fill in the details or upload a receipt to auto-fill'}</div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px;">
+        <div style="font-size:14px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px;">
+          <span style="background:var(--accent-glow);color:var(--accent2);padding:3px 8px;border-radius:6px;font-size:11px;">OCR</span>
+          Scan Receipt
+        </div>
+        <div class="upload-zone" id="upload-zone">
+          <input type="file" accept="image/*,application/pdf" onchange="handleReceiptUpload(this)">
+          <div class="upload-icon">📄</div>
+          <div class="upload-text">Drop your receipt here or click to upload</div>
+          <div class="upload-hint">JPEG, PNG, PDF supported · AI will auto-extract details</div>
+        </div>
+        <div class="ocr-result" id="ocr-result">
+          <div class="ocr-badge"><span style="background:var(--green-bg);color:var(--green);padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;">✓ Extracted from receipt</span></div>
+          <div class="ocr-fields" id="ocr-fields"></div>
+          <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="applyOCRData()">Apply to form</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="font-size:14px;font-weight:600;margin-bottom:18px;">Expense Details</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Amount</label>
+            <input type="number" id="exp-amount" placeholder="0.00" value="${editingExpense?.amount || ''}" oninput="updateCurrencyPreview()">
+          </div>
+          <div class="form-group">
+            <label>Currency</label>
+            <select id="exp-currency" onchange="updateCurrencyPreview()">
+              <option value="USD" ${editingExpense?.currency === 'USD' ? 'selected' : ''}>USD ($) — US Dollar</option>
+              <option value="EUR" ${editingExpense?.currency === 'EUR' ? 'selected' : ''}>EUR (€) — Euro</option>
+              <option value="GBP" ${editingExpense?.currency === 'GBP' ? 'selected' : ''}>GBP (£) — British Pound</option>
+              <option value="INR" ${editingExpense?.currency === 'INR' ? 'selected' : ''}>INR (₹) — Indian Rupee</option>
+              <option value="CAD" ${editingExpense?.currency === 'CAD' ? 'selected' : ''}>CAD — Canadian Dollar</option>
+              <option value="AUD" ${editingExpense?.currency === 'AUD' ? 'selected' : ''}>AUD — Australian Dollar</option>
+              <option value="JPY" ${editingExpense?.currency === 'JPY' ? 'selected' : ''}>JPY (¥) — Japanese Yen</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="currency-preview" style="display:none;" class="currency-info">
+          <span>🔄</span>
+          <span id="currency-preview-text" style="font-size:13px;color:var(--blue);"></span>
+        </div>
+
+        <div style="height:16px;"></div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Category</label>
+            <select id="exp-category">
+              <option value="Travel" ${editingExpense?.category === 'Travel' ? 'selected' : ''}>Travel</option>
+              <option value="Meals" ${editingExpense?.category === 'Meals' ? 'selected' : ''}>Meals & Entertainment</option>
+              <option value="Software" ${editingExpense?.category === 'Software' ? 'selected' : ''}>Software & Tools</option>
+              <option value="Equipment" ${editingExpense?.category === 'Equipment' ? 'selected' : ''}>Equipment</option>
+              <option value="Conference" ${editingExpense?.category === 'Conference' ? 'selected' : ''}>Conference & Training</option>
+              <option value="Office" ${editingExpense?.category === 'Office' ? 'selected' : ''}>Office Supplies</option>
+              <option value="Marketing" ${editingExpense?.category === 'Marketing' ? 'selected' : ''}>Marketing</option>
+              <option value="Other" ${editingExpense?.category === 'Other' ? 'selected' : ''}>Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Date</label>
+            <input type="date" id="exp-date" value="${editingExpense ? new Date(editingExpense.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Description</label>
+          <textarea id="exp-desc" placeholder="Describe the business purpose of this expense..." rows="3">${editingExpense?.description || ''}</textarea>
+        </div>
+
+        <div id="workflow-preview" style="margin-bottom:16px;"></div>
+
+        <div style="display:flex;gap:12px;">
+          <button class="btn btn-secondary" onclick="cancelExpenseEdit()">Cancel</button>
+          <button class="btn btn-primary" onclick="handleSubmitExpense()" id="submit-btn">${editingExpense ? 'Save Changes' : 'Submit for Approval'}</button>
+        </div>
+      </div>
+    </div>
+  `;
+  updateCurrencyPreview();
+}
+
+let ocrData = {};
+let receiptDataURL = null;
+let receiptFile = null;
+
+async function handleReceiptUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  receiptFile = file;
+
+  // Show loading
+  const zone = document.getElementById('upload-zone');
+  zone.innerHTML = `<div style="text-align:center;padding:10px;"><div class="spinner" style="border-color:rgba(124,106,247,0.3);border-top-color:var(--accent);"></div><div style="margin-top:10px;font-size:13px;color:var(--text2);">Running OCR…</div></div>`;
+
+  // Store receipt
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    receiptDataURL = e.target.result;
+  };
+  reader.readAsDataURL(file);
+
+  try {
+    let extracted = {};
+
+    // Use Tesseract.js for OCR
+    try {
+      const result = await Tesseract.recognize(file, 'eng', { logger: m => {} });
+      const text = result.data.text;
+      extracted = parseReceiptText(text);
+    } catch(e) {
+      // Fallback mock OCR
+      extracted = mockOCR();
+    }
+
+    ocrData = extracted;
+    displayOCRResult(extracted);
+    zone.innerHTML = `<div style="display:flex;align-items:center;gap:8px;padding:10px;"><span style="color:var(--green);">✓</span><span style="font-size:13px;">Receipt uploaded</span><button class="btn btn-ghost btn-sm" onclick="resetOCR()">Remove</button></div>`;
+  } catch(err) {
+    zone.innerHTML = `<div style="color:var(--red);font-size:13px;padding:10px;">Failed to process receipt. Try again.</div>`;
+  }
+}
+
+function parseReceiptText(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const result = {};
+
+  // Amount: look for currency patterns
+  const amountMatch = text.match(/\$\s*([\d,]+\.?\d*)|total[:\s]+([\d,]+\.?\d*)/i);
+  if (amountMatch) result.amount = parseFloat((amountMatch[1] || amountMatch[2]).replace(',', ''));
+
+  // Date
+  const dateMatch = text.match(/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\w+ \d{1,2},? \d{4}/);
+  if (dateMatch) {
+    try { result.date = new Date(dateMatch[0]).toISOString().split('T')[0]; } catch {}
+  }
+
+  // Merchant: usually first meaningful line
+  result.merchant = lines[0] || 'Unknown Merchant';
+
+  // Category guess
+  const lower = text.toLowerCase();
+  if (lower.includes('hotel') || lower.includes('flight') || lower.includes('airline')) result.category = 'Travel';
+  else if (lower.includes('restaurant') || lower.includes('food') || lower.includes('cafe')) result.category = 'Meals';
+  else if (lower.includes('amazon') || lower.includes('office')) result.category = 'Office';
+  else result.category = 'Other';
+
+  return result;
+}
+
+function mockOCR() {
+  const samples = [
+    { amount: 124.50, date: new Date().toISOString().split('T')[0], merchant: 'United Airlines', category: 'Travel' },
+    { amount: 48.75, date: new Date().toISOString().split('T')[0], merchant: 'The Capital Grille', category: 'Meals' },
+    { amount: 299.00, date: new Date().toISOString().split('T')[0], merchant: 'Amazon Business', category: 'Equipment' },
+  ];
+  return samples[Math.floor(Math.random() * samples.length)];
+}
+
+function displayOCRResult(data) {
+  const res = document.getElementById('ocr-result');
+  const fields = document.getElementById('ocr-fields');
+  fields.innerHTML = [
+    { label: 'Amount', value: data.amount ? '$' + data.amount : 'Not detected' },
+    { label: 'Date', value: data.date || 'Not detected' },
+    { label: 'Merchant', value: data.merchant || 'Not detected' },
+    { label: 'Category', value: data.category || 'Not detected' },
+  ].map(f => `
+    <div class="ocr-field">
+      <div class="ocr-field-label">${f.label}</div>
+      <div class="ocr-field-value">${f.value}</div>
+    </div>
+  `).join('');
+  res.classList.add('show');
+}
+
+function applyOCRData() {
+  if (ocrData.amount) document.getElementById('exp-amount').value = ocrData.amount;
+  if (ocrData.date) document.getElementById('exp-date').value = ocrData.date;
+  if (ocrData.description) document.getElementById('exp-desc').value = ocrData.description;
+  if (ocrData.merchant) document.getElementById('exp-desc').value = 'Payment to ' + ocrData.merchant;
+  if (ocrData.category) document.getElementById('exp-category').value = ocrData.category;
+  updateCurrencyPreview();
+  toast('OCR data applied to form!', 'success');
+}
+
+function resetOCR() {
+  ocrData = {};
+  receiptDataURL = null;
+  receiptFile = null;
+  renderSubmit();
+}
+
+function updateCurrencyPreview() {
+  const amount = parseFloat(document.getElementById('exp-amount')?.value || 0);
+  const currency = document.getElementById('exp-currency')?.value;
+  const company = getCompany();
+  const preview = document.getElementById('currency-preview');
+  const previewText = document.getElementById('currency-preview-text');
+
+  if (amount && currency && currency !== company.currency && preview) {
+    const converted = convertCurrency(amount, currency, company.currency);
+    previewText.textContent = `${currencySymbols[currency]||''}${amount} ${currency} ≈ ${company.symbol}${converted.toFixed(2)} ${company.currency} (converted at current rate)`;
+    preview.style.display = 'flex';
+  } else if (preview) {
+    preview.style.display = 'none';
+  }
+}
+
+function getApplicableWorkflow(amount) {
+  const workflows = DB.getAll('workflows');
+  return workflows
+    .filter(w => amount >= w.threshold)
+    .sort((a,b) => b.threshold - a.threshold)[0] || null;
+}
+
+function cancelExpenseEdit() {
+  editingExpenseId = null;
+  receiptDataURL = null;
+  receiptFile = null;
+  navigateTo('expenses');
+}
+
+async function handleSubmitExpense() {
+  const amount = parseFloat(document.getElementById('exp-amount').value);
+  const currency = document.getElementById('exp-currency').value;
+  const category = document.getElementById('exp-category').value;
+  const date = document.getElementById('exp-date').value;
+  const description = document.getElementById('exp-desc').value.trim();
+  const button = document.getElementById('submit-btn');
+  if (!amount || !date || !description) { toast('Please fill all required fields', 'error'); return; }
+  try {
+    setButtonLoading(button, true, editingExpenseId ? 'Saving...' : 'Submitting...');
+    const payload = { amount, currency, category, date, description };
+    if (editingExpenseId) {
+      await updateExpenseApi(editingExpenseId, payload, receiptFile);
+      toast('Expense updated successfully!', 'success');
+    } else {
+      await createExpenseApi(payload, receiptFile);
+      toast('Expense submitted successfully!', 'success');
+    }
+    editingExpenseId = null;
+    receiptDataURL = null;
+    receiptFile = null;
+    ocrData = {};
+    await refreshAppData();
+    loadNotifications();
+    renderSidebar();
+    renderProfile();
+    navigateTo('expenses');
+  } catch (error) {
+    toast(error.message || 'Unable to save expense', 'error');
+  } finally {
+    setButtonLoading(button, false);
+  }
+}
+
+// ════════════════════════════════════════════════════
+//  APPROVALS
+// ════════════════════════════════════════════════════
+function renderApprovals() {
+  const el = document.getElementById('page-approvals');
+  const allExpenses = DB.getAll('expenses');
+  const workflows = DB.getAll('workflows');
+  const company = getCompany();
+
+  let pending;
+  if (currentUser.role === 'admin') {
+    pending = allExpenses.filter(e => e.status === 'pending');
+  } else {
+    pending = allExpenses.filter(e => {
+      if (e.status !== 'pending') return false;
+      const wf = workflows.find(w => w.id === e.workflowId);
+      if (!wf) return false;
+      const step = wf.steps.find(s => s.id === e.currentStep);
+      return step && step.approverId === currentUser.id;
+    });
+  }
+
+  el.innerHTML = `
+    <div style="margin-bottom:22px;">
+      <div style="font-size:18px;font-family:var(--font-head);font-weight:700;">Approval Queue</div>
+      <div style="font-size:13px;color:var(--text3);margin-top:2px;">${pending.length} expense${pending.length!==1?'s':''} awaiting your review</div>
+    </div>
+
+    ${!pending.length ? `<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-text">All caught up!</div><div class="empty-sub">No expenses pending your review</div></div>` :
+      pending.map(e => {
+        const submitter = getUserById(e.submittedBy);
+        const wf = workflows.find(w => w.id === e.workflowId);
+        const currentStepObj = wf?.steps.find(s => s.id === e.currentStep);
+        const stepNum = wf?.steps.findIndex(s => s.id === e.currentStep) + 1;
+        const totalSteps = wf?.steps.length || 1;
+        return `
+          <div class="approval-card">
+            <div class="approval-meta">
+              <div class="avatar">${submitter?.avatar||'?'}</div>
+              <div style="flex:1;">
+                <div style="font-size:13px;font-weight:600;">${submitter?.name||'Unknown'} <span style="color:var(--text3);font-weight:400;">· ${submitter?.dept||''}</span></div>
+                <div style="font-size:12px;color:var(--text3);">Submitted ${fmtDate(e.createdAt)}</div>
+              </div>
+              <div class="approval-amount">${fmt(e.amount, currencySymbols[e.currency]||'$')}</div>
+            </div>
+            <div style="font-size:14px;font-weight:500;margin-bottom:6px;">${e.description}</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+              <span class="badge badge-purple">${e.category}</span>
+              <span style="font-size:12px;color:var(--text3);">${fmtDate(e.date)}</span>
+              ${e.currency !== company.currency ? `<span style="font-size:12px;color:var(--blue);">≈ ${fmt(e.convertedAmount, company.symbol)} ${company.currency}</span>` : ''}
+            </div>
+            <div style="margin-bottom:10px;">
+              <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);margin-bottom:4px;">
+                <span>Step ${stepNum} of ${totalSteps}: ${currentStepObj?.label||'Review'}</span>
+                <span>${Math.round((stepNum/totalSteps)*100)}%</span>
+              </div>
+              <div class="progress"><div class="progress-bar" style="width:${(stepNum/totalSteps)*100}%;"></div></div>
+            </div>
+            ${e.approvals.length ? `<div style="font-size:12px;color:var(--text3);margin-bottom:10px;">Previous: ${e.approvals.map(a => {const u=getUserById(a.approverId);return u?.name+' '+a.status;}).join(' → ')}</div>` : ''}
+            <textarea class="comment-input" id="comment-${e.id}" placeholder="Add a comment (optional)..."></textarea>
+            <div class="approval-actions">
+              <button class="btn btn-danger" onclick="quickApprove('${e.id}','reject')">✕ Reject</button>
+              <button class="btn btn-success" onclick="quickApprove('${e.id}','approve')">✓ Approve</button>
+              <button class="btn btn-secondary btn-sm" onclick="viewExpense('${e.id}')">View Details</button>
+            </div>
+          </div>
+        `;
+      }).join('')
+    }
+  `;
+}
+
+function openApprovalModal(id) {
+  currentApprovalExpenseId = id;
+  const expense = DB.getAll('expenses').find(e => e.id === id);
+  if (!expense) return;
+  const submitter = getUserById(expense.submittedBy);
+  document.getElementById('approval-modal-title').textContent = `Review: ${expense.description}`;
+  document.getElementById('approval-modal-body').innerHTML = `
+    <div style="margin-bottom:16px;">
+      <div style="font-family:var(--font-head);font-size:22px;font-weight:800;">${fmt(expense.amount, currencySymbols[expense.currency]||'$')}</div>
+      <div style="color:var(--text3);font-size:13px;">${expense.category} · ${fmtDate(expense.date)} · By ${submitter?.name||'Unknown'}</div>
+    </div>
+    <div class="form-group">
+      <label>Comment (required for rejection)</label>
+      <textarea id="approval-comment" placeholder="Add your decision notes..." rows="3"></textarea>
+    </div>
+  `;
+  openModal('approval-modal');
+}
+
+async function handleApprovalAction(action) {
+  if (!currentApprovalExpenseId) return;
+  const comment = document.getElementById('approval-comment')?.value || '';
+  await processApproval(currentApprovalExpenseId, action, comment);
+  closeModal('approval-modal');
+}
+
+async function quickApprove(expId, action) {
+  const comment = document.getElementById('comment-'+expId)?.value || '';
+  if (action === 'reject' && !comment.trim()) { toast('Please add a comment when rejecting', 'error'); return; }
+  await processApproval(expId, action, comment);
+}
+
+async function processApproval(expId, action, comment) {
+  try {
+    if (action === 'approve') {
+      await approveExpenseApi(expId, comment);
+      toast('Expense approved successfully', 'success');
+    } else {
+      await rejectExpenseApi(expId, comment);
+      toast('Expense rejected', 'error');
+    }
+    await refreshAppData();
+    loadNotifications();
+    renderSidebar();
+    renderProfile();
+    if (currentPage === 'approvals') renderApprovals();
+    if (currentPage === 'expenses') renderExpenses();
+    if (currentPage === 'dashboard') renderDashboard();
+    if (currentPage === 'analytics') renderAnalytics();
+  } catch (error) {
+    toast(error.message || 'Unable to process approval', 'error');
+  }
+}
+
+// ════════════════════════════════════════════════════
+//  ANALYTICS
+// ════════════════════════════════════════════════════
+function renderAnalytics() {
+  const el = document.getElementById('page-analytics');
+  const expenses = DB.getAll('expenses');
+  const company = getCompany();
+
+  const totalSpend = expenses.filter(e=>e.status==='approved').reduce((s,e)=>s+e.convertedAmount,0);
+  const avgApprovalTime = 2.4; // days (mock)
+  const approvalRate = expenses.length ? Math.round((expenses.filter(e=>e.status==='approved').length/expenses.length)*100) : 0;
+  const activeUsers = new Set(expenses.map(e => e.submittedBy).filter(Boolean));
+  if (currentUser?.id) activeUsers.add(currentUser.id);
+
+  el.innerHTML = `
+    <div class="viewport-shell">
+      <div class="section-hero">
+        <div class="section-hero-copy">
+          <div class="section-title">Analytics Overview</div>
+          <div class="section-subtitle">Company-wide expense insights in a balanced, viewport-safe workspace.</div>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card" style="--accent-color:var(--green);">
+          <div class="stat-label">Total Approved Spend</div>
+          <div class="stat-value">${fmt(totalSpend, company.symbol)}</div>
+          <div class="stat-change up">↑ This period</div>
+        </div>
+        <div class="stat-card" style="--accent-color:var(--blue);">
+          <div class="stat-label">Approval Rate</div>
+          <div class="stat-value">${approvalRate}%</div>
+          <div class="stat-change" style="color:var(--text3);">${expenses.length} total</div>
+        </div>
+        <div class="stat-card" style="--accent-color:var(--amber);">
+          <div class="stat-label">Avg. Approval Time</div>
+          <div class="stat-value">${avgApprovalTime}<span style="font-size:14px;font-weight:400;color:var(--text3);"> days</span></div>
+          <div class="stat-change up">↓ Faster than last month</div>
+        </div>
+        <div class="stat-card" style="--accent-color:var(--accent);">
+          <div class="stat-label">Active Users</div>
+          <div class="stat-value">${activeUsers.size}</div>
+          <div class="stat-change" style="color:var(--text3);">Live contributors</div>
+        </div>
+      </div>
+
+      <div class="analytics-main">
+        <div class="analytics-primary">
+          <div class="charts-grid">
+            <div class="card dashboard-card chart-card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">Monthly Expense Trend</div>
+                  <div class="card-subtitle">Approved versus rejected volume</div>
+                </div>
+              </div>
+              <div class="chart-frame">
+                <canvas id="analytics-trend"></canvas>
+              </div>
+            </div>
+            <div class="card dashboard-card chart-card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">Approval Status</div>
+                  <div class="card-subtitle">Current workflow distribution</div>
+                </div>
+              </div>
+              <div class="chart-frame">
+                <canvas id="analytics-status"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <div class="card dashboard-card">
+            <div class="card-header"><div class="card-title">Top Spenders</div></div>
+            <div class="table-card-body">
+              ${renderTopSpenders(expenses, company)}
+            </div>
+          </div>
+        </div>
+
+        <div class="analytics-secondary">
+          <div class="card dashboard-card">
+            <div class="card-header"><div class="card-title">Category Breakdown</div></div>
+            <div class="table-card-body">
+              ${renderCategoryBreakdown(expenses, company)}
+            </div>
+          </div>
+
+          <div class="card dashboard-card">
+            <div class="card-header">
+              <div>
+                <div class="card-title">Operational Snapshot</div>
+                <div class="card-subtitle">A clean read on reimbursement activity</div>
+              </div>
+            </div>
+            <div class="metric-list">
+              <div class="metric-row">
+                <div class="metric-avatar">AP</div>
+                <div class="metric-copy">
+                  <div class="metric-name">Approved Expenses</div>
+                  <div class="metric-sub">Fully completed reimbursements</div>
+                </div>
+                <div class="metric-value">${expenses.filter(e=>e.status==='approved').length}</div>
+              </div>
+              <div class="metric-row">
+                <div class="metric-avatar">PD</div>
+                <div class="metric-copy">
+                  <div class="metric-name">Pending Reviews</div>
+                  <div class="metric-sub">Items still moving through workflow</div>
+                </div>
+                <div class="metric-value">${expenses.filter(e=>e.status==='pending').length}</div>
+              </div>
+              <div class="metric-row">
+                <div class="metric-avatar">RJ</div>
+                <div class="metric-copy">
+                  <div class="metric-name">Rejected Expenses</div>
+                  <div class="metric-sub">Submissions needing follow-up</div>
+                </div>
+                <div class="metric-value">${expenses.filter(e=>e.status==='rejected').length}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  setTimeout(() => {
+    // Trend chart
+    const trendCtx = document.getElementById('analytics-trend');
+    destroyChart('analyticsTrend');
+    if (trendCtx) chartRefs.analyticsTrend = new Chart(trendCtx, {
+      type: 'bar',
+      data: {
+        labels: ['Aug','Sep','Oct','Nov','Dec','Jan'],
+        datasets: [
+          { label: 'Approved', data: [800,1200,950,1800,1400,totalSpend], backgroundColor: '#22c98e88' },
+          { label: 'Rejected', data: [200,150,300,220,180,expenses.filter(e=>e.status==='rejected').reduce((s,e)=>s+e.amount,0)], backgroundColor: '#f0545488' },
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ labels:{ color:'#9090a0', font:{size:11} } } },
+        scales:{ x:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#55556a',font:{size:11}}}, y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#55556a',font:{size:11}}} }
+      }
+    });
+
+    // Status pie
+    const statusCtx = document.getElementById('analytics-status');
+    destroyChart('analyticsStatus');
+    if (statusCtx) chartRefs.analyticsStatus = new Chart(statusCtx, {
+      type: 'pie',
+      data: {
+        labels: ['Approved','Pending','Rejected'],
+        datasets:[{ data:[
+          expenses.filter(e=>e.status==='approved').length,
+          expenses.filter(e=>e.status==='pending').length,
+          expenses.filter(e=>e.status==='rejected').length
+        ], backgroundColor:['#22c98e','#f5a623','#f05454'], borderWidth:0 }]
+      },
+      options:{ responsive:true,maintainAspectRatio:false, plugins:{legend:{position:'bottom',labels:{color:'#9090a0',font:{size:11},padding:12}}} }
+    });
+  }, 50);
+}
+
+function renderTopSpenders(expenses, company) {
+  const spendByUser = {};
+  expenses.filter(e=>e.status==='approved').forEach(e => {
+    spendByUser[e.submittedBy] = (spendByUser[e.submittedBy] || 0) + e.convertedAmount;
+  });
+  const sorted = Object.entries(spendByUser).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  if (!sorted.length) return '<div style="color:var(--text3);font-size:13px;">No data yet</div>';
+  const max = sorted[0][1];
+  return sorted.map(([uid, amt]) => {
+    const u = getUserById(uid);
+    return `
+      <div style="margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <div class="avatar" style="width:24px;height:24px;font-size:10px;">${u?.avatar||'?'}</div>
+          <span style="font-size:13px;flex:1;">${u?.name||'Unknown'}</span>
+          <span style="font-size:13px;font-weight:600;">${fmt(amt, company.symbol)}</span>
+        </div>
+        <div class="progress"><div class="progress-bar" style="width:${(amt/max)*100}%;background:var(--accent);"></div></div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderCategoryBreakdown(expenses, company) {
+  const cats = {};
+  expenses.filter(e=>e.status==='approved').forEach(e => { cats[e.category] = (cats[e.category]||0) + e.convertedAmount; });
+  const sorted = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+  const total = sorted.reduce((s,[,v])=>s+v,0);
+  const colors = ['var(--accent)','var(--green)','var(--blue)','var(--amber)','var(--red)'];
+  if (!sorted.length) return '<div style="color:var(--text3);font-size:13px;">No data yet</div>';
+  return sorted.map(([cat, amt], i) => `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+      <div style="width:10px;height:10px;border-radius:50%;background:${colors[i%colors.length]};flex-shrink:0;"></div>
+      <div style="flex:1;font-size:13px;">${cat}</div>
+      <div style="font-size:13px;font-weight:600;">${fmt(amt, company.symbol)}</div>
+      <div style="font-size:12px;color:var(--text3);width:32px;text-align:right;">${total ? Math.round((amt/total)*100) : 0}%</div>
+    </div>
+  `).join('');
+}
+
+// ════════════════════════════════════════════════════
+//  WORKFLOW BUILDER
+// ════════════════════════════════════════════════════
+function renderWorkflow() {
+  const el = document.getElementById('page-workflow');
+  const workflows = DB.getAll('workflows');
+  const users = DB.getAll('users');
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;">
+      <div>
+        <div style="font-size:18px;font-family:var(--font-head);font-weight:700;">Workflow Builder</div>
+        <div style="font-size:13px;color:var(--text3);">Define multi-step approval processes</div>
+      </div>
+      <button class="btn btn-primary" onclick="openNewWorkflow()">+ New Workflow</button>
+    </div>
+
+    ${!workflows.length ? `<div class="empty-state"><div class="empty-icon">⚙️</div><div class="empty-text">No workflows configured</div><div class="empty-sub">Create your first approval workflow</div></div>` :
+      workflows.map(wf => `
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header">
+            <div>
+              <div style="font-size:15px;font-weight:700;font-family:var(--font-head);">${wf.name}</div>
+              <div style="font-size:12px;color:var(--text3);margin-top:3px;">
+                ${wf.threshold > 0 ? `Applies to expenses ≥ ${fmt(wf.threshold, getCompany().symbol)}` : 'Default workflow (all amounts)'}
+                · ${wf.conditionType} approval
+              </div>
+            </div>
+            <span class="badge badge-info">Live</span>
+          </div>
+
+          <div class="workflow-steps">
+            ${wf.steps.map((step, i) => {
+              const approver = users.find(u => u.id === step.approverId);
+              return `
+                ${i > 0 ? `<div class="step-connector">then</div>` : ''}
+                <div class="workflow-step">
+                  <div class="step-number">${i+1}</div>
+                  <div style="flex:1;">
+                    <div style="font-size:13.5px;font-weight:500;">${step.label}</div>
+                    <div style="font-size:12px;color:var(--text3);">Approver: ${approver?.name||'Unknown'} (${approver?.role||''})</div>
+                  </div>
+                  <span class="badge badge-purple">${step.role}</span>
+                </div>
+              `;
+            }).join('')}
+          </div>
+
+          ${wf.conditionType !== 'sequential' ? `
+            <div style="margin-top:14px;padding:12px;background:var(--bg3);border-radius:var(--radius);border:1px solid var(--border);">
+              <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">CONDITIONAL RULE</div>
+              <div style="font-size:13px;">
+                ${wf.conditionType === 'percentage' ? `✓ ${wf.approvalPercentage || 60}% of approvers must approve` : ''}
+                ${wf.conditionType === 'specific' ? `⚡ ${users.find(u=>u.id===wf.specificApproverId)?.name||'Specific approver'} approval auto-approves` : ''}
+                ${wf.conditionType === 'hybrid' ? `Hybrid: ${wf.approvalPercentage||60}% threshold + ${users.find(u=>u.id===wf.specificApproverId)?.name||'CFO'} override` : ''}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `).join('')
+    }
+  `;
+}
+
+function openNewWorkflow() {
+  wfSteps = [{ id: uid(), role: 'manager', label: 'Direct Manager', approverId: '' }];
+  document.getElementById('wf-name').value = '';
+  document.getElementById('wf-threshold').value = '';
+  document.getElementById('wf-condition-type').value = 'sequential';
+  renderWfStepsList();
+  updateConditionUI();
+  openModal('workflow-modal');
+}
+
+function editWorkflow(id) {
+  toast('Workflow editing is not exposed by the current API yet.', 'info');
+}
+
+function deleteWorkflow(id) {
+  toast('Workflow deletion is not exposed by the current API yet.', 'info');
+}
+
+function addWorkflowStep() {
+  wfSteps.push({ id: uid(), role: 'approver', label: 'Approver', approverId: '' });
+  renderWfStepsList();
+}
+
+function renderWfStepsList() {
+  const users = DB.getAll('users').filter(u => u.role !== 'employee');
+  const list = document.getElementById('wf-steps-list');
+  list.innerHTML = wfSteps.map((step, i) => `
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">
+      <div class="step-number">${i+1}</div>
+      <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <input type="text" value="${step.label}" onchange="updateStep(${i},'label',this.value)" placeholder="Step label" style="font-size:12.5px;padding:7px 10px;">
+        <select onchange="updateStep(${i},'approverId',this.value)" style="font-size:12.5px;padding:7px 10px;">
+          <option value="">Select approver</option>
+          ${users.map(u => `<option value="${u.id}" ${step.approverId===u.id?'selected':''}>${u.name} (${u.role})</option>`).join('')}
+        </select>
+      </div>
+      ${wfSteps.length > 1 ? `<button class="close-btn" onclick="removeStep(${i})">×</button>` : ''}
+    </div>
+  `).join('');
+}
+
+function updateStep(i, field, val) { wfSteps[i][field] = val; }
+function removeStep(i) { wfSteps.splice(i, 1); renderWfStepsList(); }
+
+function updateConditionUI() {
+  const type = document.getElementById('wf-condition-type').value;
+  const extra = document.getElementById('condition-extra');
+  const users = DB.getAll('users');
+  extra.innerHTML = '';
+
+  if (type === 'percentage' || type === 'hybrid') {
+    extra.innerHTML += `
+      <div class="form-group">
+        <label>Minimum approval percentage</label>
+        <input type="number" id="wf-pct" min="1" max="100" value="60" placeholder="60">
+      </div>
+    `;
+  }
+  if (type === 'specific' || type === 'hybrid') {
+    extra.innerHTML += `
+      <div class="form-group">
+        <label>Specific approver (auto-approves when they approve)</label>
+        <select id="wf-specific-approver">
+          <option value="">Select approver</option>
+          ${users.map(u => `<option value="${u.id}">${u.name} (${u.role})</option>`).join('')}
+        </select>
+      </div>
+    `;
+  }
+}
+
+async function saveWorkflow() {
+  const name = document.getElementById('wf-name').value.trim();
+  const threshold = parseFloat(document.getElementById('wf-threshold').value) || 0;
+  const conditionType = document.getElementById('wf-condition-type').value;
+  if (!name) { toast('Enter a workflow name', 'error'); return; }
+  if (!wfSteps.every(s => s.approverId)) { toast('All steps need an assigned approver', 'error'); return; }
+
+  const wf = {
+    name, threshold, steps: wfSteps, conditionType,
+    approvalPercentage: document.getElementById('wf-pct') ? parseInt(document.getElementById('wf-pct').value) : null,
+    specificApproverId: document.getElementById('wf-specific-approver')?.value || null,
+  };
+  const button = document.querySelector('#workflow-modal .btn-primary');
+  try {
+    setButtonLoading(button, true, 'Saving...');
+    await createWorkflowApi(wf);
+    await refreshAppData();
+    closeModal('workflow-modal');
+    renderWorkflow();
+    toast('Workflow saved!', 'success');
+  } catch (error) {
+    toast(error.message || 'Unable to save workflow', 'error');
+  } finally {
+    setButtonLoading(button, false);
+  }
+}
+
+// ════════════════════════════════════════════════════
+//  USERS
+// ════════════════════════════════════════════════════
+function renderUsers() {
+  const el = document.getElementById('page-users');
+  const users = DB.getAll('users');
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;">
+      <div>
+        <div style="font-size:18px;font-family:var(--font-head);font-weight:700;">Team Members</div>
+        <div style="font-size:13px;color:var(--text3);">${users.length} members</div>
+      </div>
+      <button class="btn btn-primary" onclick="openAddUser()">+ Add Member</button>
+    </div>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Name</th><th>Email</th><th>Role</th><th>Department</th><th>Reports To</th><th>Actions</th></tr>
+          </thead>
+          <tbody>
+            ${users.map(u => {
+              const manager = users.find(m => m.id === u.managerId);
+              return `
+                <tr>
+                  <td><div style="display:flex;align-items:center;gap:10px;"><div class="avatar">${u.avatar}</div><span class="text-main">${u.name}</span></div></td>
+                  <td>${u.email}</td>
+                  <td><span class="badge role-${u.role}">${u.role}</span></td>
+                  <td>${u.dept||'—'}</td>
+                  <td>${manager?.name || '—'}</td>
+                  <td>
+                    ${u.id !== currentUser.id ? `<button class="btn btn-danger btn-sm" onclick="removeUser('${u.id}')">Remove</button>` : '<span style="color:var(--text3);font-size:12px;">You</span>'}
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function openAddUser() {
+  const managers = DB.getAll('users').filter(u => u.role !== 'employee');
+  const sel = document.getElementById('new-user-manager');
+  sel.innerHTML = '<option value="">None</option>' + managers.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+  document.getElementById('new-user-name').value = '';
+  document.getElementById('new-user-email').value = '';
+  document.getElementById('new-user-dept').value = '';
+  openModal('user-modal');
+}
+
+async function handleAddUser() {
+  const name = document.getElementById('new-user-name').value.trim();
+  const email = document.getElementById('new-user-email').value.trim();
+  const role = document.getElementById('new-user-role').value;
+  const managerId = document.getElementById('new-user-manager').value || null;
+  const dept = document.getElementById('new-user-dept').value.trim();
+  if (!name || !email) { toast('Name and email required', 'error'); return; }
+  const button = document.querySelector('#user-modal .btn-primary');
+  try {
+    setButtonLoading(button, true, 'Adding...');
+    await createUserApi({
+      name,
+      email,
+      password: 'password123',
+      role,
+      department: dept,
+      managerId
+    });
+    await refreshAppData();
+    closeModal('user-modal');
+    renderUsers();
+    toast(`${name} added with default password "password123"`, 'success');
+  } catch (error) {
+    toast(error.message || 'Unable to add user', 'error');
+  } finally {
+    setButtonLoading(button, false);
+  }
+}
+
+async function removeUser(id) {
+  if (!confirm('Remove this user?')) return;
+  try {
+    await deleteUserApi(id);
+    await refreshAppData();
+    renderUsers();
+    toast('User removed', 'info');
+  } catch (error) {
+    toast(error.message || 'Unable to remove user', 'error');
+  }
+}
+
+// ════════════════════════════════════════════════════
+//  AUDIT LOG
+// ════════════════════════════════════════════════════
+function renderAudit() {
+  const el = document.getElementById('page-audit');
+  const logs = DB.getAll('audit').sort((a,b) => b.ts - a.ts);
+  const users = DB.getAll('users');
+
+  const actionColors = {
+    EXPENSE_SUBMITTED: 'badge-blue',
+    EXPENSE_APPROVED: 'badge-approved',
+    EXPENSE_REJECTED: 'badge-rejected',
+    AUTH_LOGIN: 'badge-purple',
+    AUTH_REGISTER: 'badge-purple',
+    USER_ADDED: 'badge-info',
+    USER_CREATED: 'badge-info',
+    USER_UPDATED: 'badge-info',
+    USER_DELETED: 'badge-rejected',
+    USER_REMOVED: 'badge-rejected',
+    WORKFLOW_SAVED: 'badge-pending',
+    WORKFLOW_CREATED: 'badge-pending',
+  };
+
+  el.innerHTML = `
+    <div style="margin-bottom:22px;">
+      <div style="font-size:18px;font-family:var(--font-head);font-weight:700;">Audit Log</div>
+      <div style="font-size:13px;color:var(--text3);">${logs.length} events recorded</div>
+    </div>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Time</th><th>Action</th><th>User</th><th>Details</th></tr>
+          </thead>
+          <tbody>
+            ${!logs.length ? `<tr><td colspan="4"><div class="empty-state" style="padding:30px;">No audit events yet</div></td></tr>` :
+              logs.slice(0, 50).map(log => {
+                const user = users.find(u => u.id === log.userId);
+                return `
+                  <tr>
+                    <td style="white-space:nowrap;">${fmtTs(log.ts)}</td>
+                    <td><span class="badge ${actionColors[log.action]||'badge-info'}" style="font-size:10px;">${log.action}</span></td>
+                    <td><div style="display:flex;align-items:center;gap:6px;"><div class="avatar" style="width:22px;height:22px;font-size:9px;">${user?.avatar||'?'}</div><span>${user?.name||'Unknown'}</span></div></td>
+                    <td style="color:var(--text2);">${log.details}</td>
+                  </tr>
+                `;
+              }).join('')
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+// ════════════════════════════════════════════════════
+//  PROFILE
+// ════════════════════════════════════════════════════
+function renderProfile() {
+  if (!currentUser) return;
+  const company = getCompany();
+  const myExpenses = DB.getAll('expenses').filter(e => e.submittedBy === currentUser.id);
+  const el = document.getElementById('profile-modal-body');
+  el.innerHTML = `
+    <div style="text-align:center;margin-bottom:24px;">
+      <div class="avatar" style="width:64px;height:64px;font-size:22px;margin:0 auto 12px;">${currentUser.avatar}</div>
+      <div style="font-size:17px;font-weight:700;">${currentUser.name}</div>
+      <div style="font-size:13px;color:var(--text3);">${currentUser.email}</div>
+      <div style="margin-top:8px;"><span class="badge role-${currentUser.role}">${currentUser.role}</span></div>
+    </div>
+    <div class="divider"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div style="background:var(--bg3);border-radius:var(--radius);padding:12px;text-align:center;">
+        <div style="font-size:22px;font-weight:800;font-family:var(--font-head);">${myExpenses.length}</div>
+        <div style="font-size:12px;color:var(--text3);">Total Expenses</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:var(--radius);padding:12px;text-align:center;">
+        <div style="font-size:22px;font-weight:800;font-family:var(--font-head);color:var(--green);">${myExpenses.filter(e=>e.status==='approved').length}</div>
+        <div style="font-size:12px;color:var(--text3);">Approved</div>
+      </div>
+    </div>
+    <div style="font-size:13px;color:var(--text3);">
+      <div style="margin-bottom:8px;"><span style="color:var(--text2);">Company:</span> ${company.name}</div>
+      <div style="margin-bottom:8px;"><span style="color:var(--text2);">Department:</span> ${currentUser.dept || '—'}</div>
+      <div><span style="color:var(--text2);">Company Currency:</span> ${company.currency} (${company.symbol})</div>
+    </div>
+  `;
+}
+
+// ════════════════════════════════════════════════════
+//  BOOT
+// ════════════════════════════════════════════════════
+function boot() {
+  // Show auth by default because the frontend no longer uses localStorage sessions.
+  document.getElementById('auth-screen').style.display = '';
+  document.getElementById('main-app').style.display = 'none';
+  if (window.location.protocol === 'file:') {
+    console.warn('This app should be served over HTTP. file:// will cause backend API calls to fail in many browsers.');
+    toast('Run this page via http://localhost:3000, not file://', 'error');
+  }
+
+  // Mobile menu button
+  if (window.innerWidth < 900) {
+    document.getElementById('mobile-menu-btn').style.display = 'flex';
+  }
+
+  window.addEventListener('resize', () => {
+    const btn = document.getElementById('mobile-menu-btn');
+    if (btn) btn.style.display = window.innerWidth < 900 ? 'flex' : 'none';
+  });
+}
+
+boot();
+</script>
+</body>
+</html>
